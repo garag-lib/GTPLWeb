@@ -1,0 +1,77 @@
+{
+  "author": "Manuel Peliz",
+  "license": "Apache-2.0",
+  "name": "@mpeliz/gtplweb",
+  "version": "1.0.0",
+  "description": "Web component framework built on top of GTPL with AOT compilation.",
+  "keywords": [
+    "gtpl",
+    "framework",
+    "web-components",
+    "aot",
+    "typescript"
+  ],
+  "homepage": "https://www.npmjs.com/package/@mpeliz/gtplweb",
+  "repository": {
+    "type": "git",
+    "url": "https://git-codecommit.eu-west-3.amazonaws.com/v1/repos/Proyectos"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "type": "module",
+  "main": "./dist/gtplweb.cjs.js",
+  "module": "./dist/gtplweb.esm.js",
+  "types": "./dist/index.d.ts",
+  "files": [
+    "dist",
+    "tools/aot-prebuild.js",
+    "README.md",
+    "LICENSE",
+    "NOTICE",
+    "CITATION.cff"
+  ],
+  "exports": {
+    "./package.json": "./package.json",
+    ".": {
+      "import": "./dist/gtplweb.esm.js",
+      "require": "./dist/gtplweb.cjs.js",
+      "types": "./dist/index.d.ts"
+    }
+  },
+  "scripts": {
+    "clean": "rm -rf dist src-aot",
+    "aot": "node tools/aot-prebuild.js",
+    "typecheck": "tsc --noEmit",
+    "build": "npm run clean && npm run aot && rollup -c pro.rollup.config.mjs",
+    "build:dev": "npm run clean && npm run aot && rollup -c rollup.config.mjs",
+    "build:prod": "NODE_ENV=production npm run build",
+    "build:prod:bundle": "NODE_ENV=production npm run clean && npm run aot && rollup -c pro.rollup.config.mjs",
+    "prepublishOnly": "npm run typecheck && npm run build:prod"
+  },
+  "bin": {
+    "gtpl-aot": "./tools/aot-prebuild.js"
+  },
+  "dependencies": {
+    "@mpeliz/gtpl": "^1.1.2",
+    "tslib": "^2.8.1"
+  },
+  "devDependencies": {
+    "@rollup/plugin-commonjs": "^28.0.9",
+    "@rollup/plugin-node-resolve": "^15.3.0",
+    "@rollup/plugin-terser": "^0.4.4",
+    "@rollup/plugin-typescript": "^11.1.6",
+    "@types/jsdom": "^27.0.0",
+    "@types/node": "^24.9.1",
+    "glob": "^11.0.3",
+    "jsdom": "^27.0.1",
+    "rollup": "^4.9.6",
+    "rollup-plugin-copy": "^3.5.0",
+    "rollup-plugin-dts": "^6.2.3",
+    "sass": "^1.93.3",
+    "typescript": "^5.9.3"
+  }
+}

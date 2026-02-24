@@ -1,0 +1,9 @@
+cff-version: 1.2.0
+title: GTPLWeb
+message: "If you use GTPLWeb, please cite this project."
+type: software
+authors:
+  - family-names: Peliz
+    given-names: Manuel
+repository-code: "https://git-codecommit.eu-west-3.amazonaws.com/v1/repos/Proyectos"
+license: Apache-2.0
