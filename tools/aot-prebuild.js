@@ -13,8 +13,7 @@
  */
 
 import fs from 'fs';
-import path, { dirname } from 'path';
-import { fileURLToPath } from 'url';
+import path from 'path';
 import { JSDOM } from 'jsdom';
 import ts from 'typescript';
 import { glob } from 'glob';
@@ -23,8 +22,6 @@ import * as sass from 'sass'
 // -----------------------------------------------------
 // 🧭 Inicialización de rutas
 // -----------------------------------------------------
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = dirname(__filename);
 const SRC_DIR = path.resolve(process.cwd(), 'src');
 const OUT_DIR = path.resolve(process.cwd(), 'src-aot');
 
@@ -72,16 +69,25 @@ async function loadGTPL() {
 function extractComponentInfo(filePath, code) {
     const source = ts.createSourceFile(filePath, code, ts.ScriptTarget.Latest, true, ts.ScriptKind.TS);
     const result = [];
+
+    const looksLikeHtml = (text) => /^\s*</.test(text) && text.includes('>');
+    const isComponentDecorator = (expr) => {
+        if (!ts.isCallExpression(expr)) return false;
+        const callee = expr.expression;
+        if (ts.isIdentifier(callee)) return callee.text === 'Component';
+        if (ts.isPropertyAccessExpression(callee)) return callee.name.text === 'Component';
+        return false;
+    };
+
     function visit(node) {
         if (ts.isClassDeclaration(node) && node.modifiers) {
             const decorators = node.modifiers.filter(m => m.kind === ts.SyntaxKind.Decorator);
             for (const decorator of decorators) {
                 const expr = decorator.expression;
-                if (ts.isCallExpression(expr) && expr.expression.getText(source) === 'Component') {
+                if (isComponentDecorator(expr)) {
                     const arg = expr.arguments[0];
                     let templatePath = null;
-                    let shadow = false;
-                    let tag = null;
+                    let templateHtml = null;
                     let styleUrls = [];
                     let inlineStyles = [];
                     let styleMode = 'global'; // valor por defecto
@@ -91,14 +97,11 @@ function extractComponentInfo(filePath, code) {
                             const value = prop.initializer;
                             if (name === 'styleMode' && ts.isStringLiteral(value))
                                 styleMode = value.text;
-                            if ((name === 'template' || name === 'templateUrl') && ts.isStringLiteral(value))
-                                templatePath = value.text;
-                            if (name === 'tag' && ts.isStringLiteral(value))
-                                tag = value.text;
-                            if (name === 'shadow') {
-                                if (value.kind === ts.SyntaxKind.TrueKeyword) shadow = true;
-                                else if (value.kind === ts.SyntaxKind.FalseKeyword) shadow = false;
-                                else if (ts.isObjectLiteralExpression(value)) shadow = {}; // marcador
+                            if ((name === 'template' || name === 'templateUrl') && ts.isStringLiteral(value)) {
+                                if (name === 'template' && looksLikeHtml(value.text))
+                                    templateHtml = value.text;
+                                else
+                                    templatePath = value.text;
                             }
                             if ((name === 'style') && (ts.isStringLiteral(value) || ts.isArrayLiteralExpression(value))) {
                                 if (ts.isStringLiteral(value)) {
@@ -127,11 +130,10 @@ function extractComponentInfo(filePath, code) {
                             className,
                             filePath,
                             templatePath,
-                            tag,
+                            templateHtml,
                             styleUrls,
                             inlineStyles,
-                            styleMode,
-                            shadow
+                            styleMode
                         });
                     }
                 }
@@ -146,51 +148,6 @@ function extractComponentInfo(filePath, code) {
 // -----------------------------------------------------
 // 🧰 Inyectar el código compilado dentro de la clase
 // -----------------------------------------------------
-/*function injectCompiledAssets(code, className, compiledTemplate, compiledStyles, urlStyles) {
-    let output = code;
-
-    if (!code.includes("import GTPL from 'gtpl'")) {
-        const importBlock = /import[^;]+;/g;
-        const matches = code.match(importBlock);
-        if (matches && matches.length) {
-            const lastImport = matches[matches.length - 1];
-            output = code.replace(lastImport, `${lastImport}\nimport GTPL from 'gtpl';`);
-        } else {
-            output = `import GTPL from 'gtpl';\n` + code;
-        }
-    }
-
-    const wrappedTemplate = `((GTPL) => {
-        const g = GTPL.GGenerator;
-        // @ts-ignore
-        return ${compiledTemplate};
-    })(GTPL)`;
-
-    const styleBlock = compiledStyles ? `
-    static __stylesInline__ = ${JSON.stringify(compiledStyles)};
-    ` : '';
-
-    const styleUrlBlock = (urlStyles && urlStyles.length) ? `
-    static __styleUrls__ = ${JSON.stringify(urlStyles)};
-    ` : '';
-
-    const propertyBlock = `
-    static __gtemplate__ = ${wrappedTemplate};
-    ${styleBlock}
-    ${styleUrlBlock}
-    `;
-
-    const classRegex = new RegExp(
-        `(export\\s+(?:default\\s+)?class\\s+${className}` +         // export class Nombre
-        `(?:\\s+extends\\s+[\\w$.]+(?:\\s*<[^>]*>)?)?` +             // opcional extends Algo<T>
-        `(?:\\s+implements\\s+[\\w$,\\s]+)?` +                       // opcional implements IFoo, IBar
-        `\\s*\\{)`,                                                  // apertura de la llave
-        'm'
-    );
-
-    return output.replace(classRegex, `$1${propertyBlock}`);
-}*/
-
 function injectCompiledAssets(code, className, compiledTemplate, compiledStyles, urlStyles) {
     let output = code;
 
@@ -264,14 +221,24 @@ function injectCompiledAssets(code, className, compiledTemplate, compiledStyles,
 
     // Inserta tras la llave de apertura de la clase
     const classRegex = new RegExp(
-        `(export\\s+(?:default\\s+)?class\\s+${className}` +
+        `((?:export\\s+(?:default\\s+)?)?class\\s+${className}` +
         `(?:\\s+extends\\s+[\\w$.]+(?:\\s*<[^>]*>)?)?` +
         `(?:\\s+implements\\s+[\\w$,\\s]+)?` +
         `\\s*\\{)`,
         'm'
     );
 
-    return output.replace(classRegex, `$1\n${propertyBlock}\n`);
+    let injected = false;
+    output = output.replace(classRegex, (_m, p1) => {
+        injected = true;
+        return `${p1}\n${propertyBlock}\n`;
+    });
+
+    if (!injected) {
+        throw new Error(`No se pudo inyectar AOT en la clase "${className}". Verifica que la clase exista en el archivo.`);
+    }
+
+    return output;
 }
 
 
@@ -317,7 +284,9 @@ async function processFile(filePath) {
         const absTemplate = info.templatePath ? path.resolve(path.dirname(filePath), info.templatePath) : null;
         let compiledTemplate = 'null';
         // 🧱 Compilar template (HTML → GCode)
-        if (absTemplate && fs.existsSync(absTemplate)) {
+        if (info.templateHtml != null) {
+            compiledTemplate = await GTPL.jit.GCode(info.templateHtml);
+        } else if (absTemplate && fs.existsSync(absTemplate)) {
             const html = fs.readFileSync(absTemplate, 'utf8');
             compiledTemplate = await GTPL.jit.GCode(html);
             // 🚫 No borrar el template original en src
@@ -333,6 +302,8 @@ async function processFile(filePath) {
             } else {
                 console.warn(`⚠️  No he encontrado el template para eliminar: ${aotTemplate}`);
             }
+        } else if (info.templatePath) {
+            console.warn(`⚠️  Template no encontrado para ${info.className}: ${info.templatePath}`);
         }
         //---
         // 🎨 Compilar estilos (CSS / SCSS / SASS)
@@ -386,7 +357,8 @@ async function processFile(filePath) {
             const rel = path.relative(SRC_DIR, filePath);
             const relDir = path.dirname(rel);
             const base = path.basename(rel, '.ts').toLowerCase();
-            const abs = path.join(OUT_DIR, relDir, `${base}-inline.css`);
+            const cname = String(info.className || 'component').toLowerCase();
+            const abs = path.join(OUT_DIR, relDir, `${base}-${cname}-inline.css`);
 
             switch (info.styleMode) {
                 case 'global':
@@ -413,13 +385,12 @@ async function processFile(filePath) {
             info.styleUrlsGenerated = [...new Set(info.styleUrlsGenerated)];
             // 🧭 Ajustar rutas a ser relativas al raíz del código fuente (SRC_DIR)
             info.styleUrlsGenerated = info.styleUrlsGenerated.map(cssPath => {
-                // Puede venir como '/components/button/button.css' o 'components/button/button.css'
-                // o incluso como './components/button/button.css'
-                let clean = cssPath.replace(/^(\.\/|\/)+/, ''); // quitar ./ o / iniciales
-                // Si la ruta es absoluta, recálculala a relativa a SRC_DIR
-                if (path.isAbsolute(clean)) {
-                    const rel = path.relative(SRC_DIR, clean);
+                let clean = cssPath;
+                if (path.isAbsolute(cssPath)) {
+                    const rel = path.relative(SRC_DIR, cssPath);
                     clean = rel.replace(/\\/g, '/');
+                } else {
+                    clean = cssPath.replace(/^(\.\/|\/)+/, '');
                 }
                 return './' + clean.replace(/\\/g, '/');
             });
@@ -489,7 +460,7 @@ async function main() {
         }
         if (entry.endsWith('.ts')) {
             const code = fs.readFileSync(entry, 'utf8');
-            if (code.includes('@Component')) {
+            if (/@[\w.]*Component\b/.test(code)) {
                 tsFiles.push(entry);
                 continue;
             }
