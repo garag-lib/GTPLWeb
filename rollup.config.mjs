@@ -7,13 +7,10 @@ import copy from 'rollup-plugin-copy';
 export default [
   {
     input: 'src-aot/index.ts',
-    output: {
-      dir: 'dist',
-      format: 'es',
-      sourcemap: true,
-      preserveModules: true,
-      preserveModulesRoot: 'src-aot'
-    },
+    output: [
+      { file: 'dist/gtplweb.esm.js', format: 'es', sourcemap: true },
+      { file: 'dist/gtplweb.cjs.js', format: 'cjs', sourcemap: true, exports: 'named' }
+    ],
     plugins: [
       nodeResolve(),
       commonjs(),
