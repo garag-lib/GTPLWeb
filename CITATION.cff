@@ -5,5 +5,5 @@ type: software
 authors:
   - family-names: Peliz
     given-names: Manuel
-repository-code: "https://git-codecommit.eu-west-3.amazonaws.com/v1/repos/Proyectos"
+repository-code: "https://github.com/garag-lib/GTPLWeb.git"
 license: Apache-2.0
