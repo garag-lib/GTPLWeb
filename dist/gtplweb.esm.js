@@ -1,1 +1,1578 @@
-import{__decorate as t}from"tslib";import e from"@mpeliz/gtpl";class s{constructor(t,e,s,i){this.ele=t,this.value=e,this.root=s.Root,this.argument=i,this.onInit?.()}}const i=new WeakMap;const r=new Map;function n(t){return r.get(t)}function a(t,e,s,i){Object.defineProperty(t,e,{value:s,enumerable:i?.enumerable??!1,writable:i?.writable??!1,configurable:i?.configurable??!1})}const o=Symbol("COMP_CTRL"),l=Symbol("COMP_FLAGS"),c=Symbol("COMP_GTPL"),h=Symbol("CLASS_META"),u=Symbol("HOST_CREATE"),d=t=>t[o],p=t=>t[l],m=t=>t[c],f=t=>t[h];function y(t){return t[o]}function g(t){return t[c]}function w(t){return!0===t[u]}function b(t,s,r,n,...d){const p=new s(...d);a(t,o,p),a(p,"$el",t);const m={firstRender:!0,stylesApplied:!1,destroyed:!1};a(t,l,m),a(p,"destroy",function(){p.onDestroy?.(),m.destroyed=!0;try{t[c]?.destroy?.()}catch(t){console.error(t)}m.firstRender=!1,n||(t.innerHtml=""),(n||t[u])&&t.remove(),t[c]=null}.bind(p)),p.onConstruct?.(...d);const y=n?t.constructor:s.__gcomponent__;Object.prototype.hasOwnProperty.call(y,h)||a(y,h,Object.freeze({...r}));const g=f(y);n&&g.shadow?!0===g.shadow?t.$host=t.attachShadow({mode:"open"}):t.$host=t.attachShadow(g.shadow):t.$host=t;const w=()=>{const s=function(t,s){const i={root:t,generator:s};return new e.GTpl(i)}(p,g.templateFactory);a(t,c,s,{writable:!0}),p.onInit?.()};g.templateFactory?w():async function(t){t.templateFactory||(t.compilePromise||(t.compilePromise=(async()=>{try{const s=t.templateHtml??await(await fetch(t.templateUrl)).text(),i=e.jit.GCode(s);t.templateFactory=e.jit.GCompile(i)}catch(e){throw console.error("[GTPL compile error]",{url:t.templateUrl,err:e}),e}finally{t.compilePromise=null}})()),await t.compilePromise)}(g).then(()=>{m.destroyed||w()});return Promise.resolve().then(()=>{m.stylesApplied||(m.stylesApplied=!0,"lazy"!==g.styleMode&&function(t,e){const s=e.styleMode,r=t.$host,n=!(!r||!("adoptedStyleSheets"in r))&&e.stylesInline.length>0;if("lazy"!==s&&n){const s=t.constructor;let n=i.get(s);n||(n=new CSSStyleSheet,n.replaceSync(e.stylesInline.join("\n")),i.set(s,n));const a=[...r.adoptedStyleSheets];a.includes(n)||(r.adoptedStyleSheets=[...a,n])}else switch(s){case"inline":case"file":for(const s of e.stylesInline){const e=document.createElement("style");e.textContent=s,t.$host.appendChild(e)}for(const s of e.styleUrls){const e=document.createElement("link");e.rel="stylesheet",e.href=s,t.$host.appendChild(e)}}}(t,g)),m.firstRender&&(m.firstRender=!1,t[c]?.addTo(t.$host),p.onTemplateReady?.())}),t}class v extends HTMLElement{constructor(t){super(),this.ctrl=t,this.style.display="none",this.style.position="absolute"}connectedCallback(){if(this.ctrl)return void this.ctrl.onConnect?.(this);const t=this.parentNode;if(!t)return;const e=y(t);e?.onConnect?.()}disconnectedCallback(){if(this.ctrl)return void this.ctrl.onConnect?.(this);const t=this.parentNode;if(!t)return;const e=y(t);e?.onDisconnect?.()}}function C(t){return function(s){const i=t,n=null==i.asWebComponent||i.asWebComponent,o=s.name.replace(/([a-z0-9])([A-Z])/g,"$1-$2").replace(/([A-Z])([A-Z][a-z])/g,"$1-$2").toLowerCase();const l=i.tag??o;if(!l.includes("-"))throw new Error(`Custom element name "${l}" must contain a hyphen (-). Use 'tag' in @Component.`);let c=!1;!0===i.shadow?c={mode:"open"}:!1===i.shadow?c=!1:"object"==typeof i.shadow&&(c=i.shadow);const h=s.__gtemplate__??null,p=i.styleMode??"global";let m=[],f=[],y=null,g=null;if(h)m=s.__styleUrls__??[],f=s.__stylesInline__??[];else{const t="string"==typeof i.template?i.template:null,e="object"==typeof i.template&&i.template?i.template.html??null:null;if(null!=e?y=e:null!=t&&((w=t)&&/^\s*</.test(w)&&w.includes(">")?y=t:g=t),i.style){const t=Array.isArray(i.style)?i.style:[i.style];for(const e of t){const t=e.trim();/\.(scss|sass)$/i.test(t)||(/\.css$/i.test(t)?m.push(t):f.push(e))}}}var w;const C={templateHtml:y,templateUrl:g,templateFactory:h,styleMode:p,styleUrls:m,stylesInline:f,shadow:c,compilePromise:null,asWebComponent:n};let L=null;return n?(L=class extends HTMLElement{constructor(...t){super(),b(this,s,C,!0,...t)}connectedCallback(){d(this).onConnect?.()}disconnectedCallback(){d(this)?.onDisconnect?.()}},customElements.get(l)||customElements.define(l,L)):L=class{constructor(t,...i){return t||((t=e.utils.globalObject.document.createElement("div")).setAttribute("g-component",l),a(t,u,!0)),t?.appendChild(new v(this)),b(t,s,C,!1,...i)}connectedCallback(){d(this).onConnect?.()}disconnectedCallback(){d(this)?.onDisconnect?.()}},a(s,"__gcomponent__",L),r.has(l)?console.warn(`Component with name "${l}" is already defined.`):r.set(l,{asWebComponent:n,ControllerClass:s,ComponentClass:L}),s}}function L(t){return function(s){const i=t?.name??s.name.replace(/Directive$/,"").replace(/([A-Z])/g,"-$1").toLowerCase().slice(1);if(!i)throw new Error("@Directive() requiere un nombre válido");if(!function(t){return/^[a-zA-Z_][a-zA-Z0-9_\-:.]*$/.test(t)}(i))throw new Error(`Nombre de directiva inválido: "${i}". Debe ser un nombre de atributo HTML válido.`);return e.GregisterDirective(i,s)||console.warn(`⚠️ La directiva "${i}" ya está registrada.`),s}}customElements.get("g-watcher")||customElements.define("g-watcher",v);let $=class extends s{onInit(){if(this.argument&&this.argument.trim())return void(this.path=this.argument.trim().split("."));const t=this.ele.getAttribute("g-set-var");if(t&&t.trim())return this.path=t.trim().split("."),void this.ele.removeAttribute("g-set-var");console.error('g-set: falta el nombre de la propiedad. Usa g-set:prop / g-set:obj.prop o g-set-var="prop".')}applyPathSet(t,e){if(!t||!this.path||0===this.path.length)return;const s=this.path;if(s.length>1){const i=(t,e,r)=>{if(null!=t)return e===r?t[s[e]]:i(t[s[e]],e+1,r)},r=i(t,0,s.length-2);if(!r)return;r[s[s.length-1]]=e}else{t[s[0]]=e}}setAttribute(t,e){if(!this.path||0===this.path.length)return;const s=y(this.ele);s&&this.applyPathSet(s,e)}getAttribute(t){return null}removeAttribute(t){}};$=t([L({name:"g-set"})],$);let P=class extends s{onInit(){const t=this.ele.getAttribute("class");this.cls=t?t.split(/\s+/).filter(Boolean):[]}setAttribute(t,e){const s=this.ele;this.cls=Array.isArray(e)?e:String(e||"").split(/\s+/),this.cls.length?s.setAttribute("class",this.cls.join(" ")):s.removeAttribute("class")}getAttribute(t){return this.cls?.length?this.cls.join(" "):null}removeAttribute(t){this.ele.removeAttribute("class"),this.cls=[]}};P=t([L({name:"g-class"})],P);let A=class extends s{destroyComponent(){if(this.webc){const t=y(this.webc);t?.destroy(),this.regc.asWebComponent||(w(this.webc)?this.webc.remove():this.webc.setAttribute("g-component","")),this.webc=void 0,this.regc=void 0}}createComponent(t){if(this.value==t)return;this.destroyComponent();const e=n(this.value);if(e){if(this.value=t,this.webc.setAttribute("g-component",this.value),this.ele.innerHTML="",e.asWebComponent){const t=new e.ComponentClass;this.ele.appendChild(t),this.webc=t}else this.webc=new e.ComponentClass(this.ele);this.regc=e}else console.warn(`[g-component] componente "${t}" no registrado`)}onInit(){this.createComponent(this.value)}setAttribute(t,e){this.value!=e&&(this.destroyComponent(),this.createComponent(e))}getAttribute(t){return this.value??""}removeAttribute(t){this.destroyComponent(),this.value=""}};A=t([L({name:"g-component"})],A);class T{static enable(){T.enabled=!0}static disable(){T.enabled=!1}static setInitial(t,e){T.enabled&&(t.style.transition="none",t.style.pointerEvents="none",Object.assign(t.style,e))}static resetStyles(t){t.style.removeProperty("opacity"),t.style.removeProperty("transform"),t.style.removeProperty("transition"),t.style.removeProperty("pointer-events")}static animateTo(t,e,s=300,i="ease"){return T.enabled?new Promise(r=>{requestAnimationFrame(()=>{requestAnimationFrame(()=>{t.style.transition=`all ${s}ms ${i}`,Object.assign(t.style,e);const n=e=>{e.target===t&&(t.removeEventListener("transitionend",n),t.style.pointerEvents="auto",r())};t.addEventListener("transitionend",n)})})}):(Object.assign(t.style,e),Promise.resolve())}static wait(t){return new Promise(e=>setTimeout(e,t))}static stopTransition(t){const e=getComputedStyle(t);t.style.transition="none",t.style.transform=e.transform,t.style.opacity=e.opacity}static fadeIn(t,e=300){return this.setInitial(t,{opacity:"0"}),this.animateTo(t,{opacity:"1"},e)}static fadeOut(t,e=300){return this.setInitial(t,{opacity:"1"}),this.animateTo(t,{opacity:"0"},e)}static slideInX(t,e="-100%",s=300){return this.setInitial(t,{transform:`translateX(${e})`}),this.animateTo(t,{transform:"translateX(0)"},s)}static slideOutX(t,e="-100%",s=300){return this.setInitial(t,{transform:"translateX(0)"}),this.animateTo(t,{transform:`translateX(${e})`},s)}static slideInY(t,e="100%",s=300){return this.setInitial(t,{transform:`translateY(${e})`}),this.animateTo(t,{transform:"translateY(0)"},s)}static slideOutY(t,e="100%",s=300){return this.setInitial(t,{transform:"translateY(0)"}),this.animateTo(t,{transform:`translateY(${e})`},s)}static scaleIn(t,e="0.6",s=300){return this.setInitial(t,{transform:`scale(${e})`,opacity:"0"}),this.animateTo(t,{transform:"scale(1)",opacity:"1"},s)}static scaleOut(t,e="0.6",s=300){return this.setInitial(t,{transform:"scale(1)",opacity:"1"}),this.animateTo(t,{transform:`scale(${e})`,opacity:"0"},s)}static rotateIn(t,e="-20deg",s=300){return this.setInitial(t,{transform:`rotate(${e})`,opacity:"0"}),this.animateTo(t,{transform:"rotate(0)",opacity:"1"},s)}static rotateOut(t,e="20deg",s=300){return this.setInitial(t,{transform:"rotate(0)",opacity:"1"}),this.animateTo(t,{transform:`rotate(${e})`,opacity:"0"},s)}static slideFadeInY(t,e="20px",s=300){return this.setInitial(t,{transform:`translateY(${e})`,opacity:"0"}),this.animateTo(t,{transform:"translateY(0)",opacity:"1"},s)}static slideFadeInX(t,e="-20px",s=300){return this.setInitial(t,{transform:`translateX(${e})`,opacity:"0"}),this.animateTo(t,{transform:"translateX(0)",opacity:"1"},s)}static diagonalIn(t,e="-50%",s="50%",i=300){return this.setInitial(t,{transform:`translate(${e}, ${s})`,opacity:"0"}),this.animateTo(t,{transform:"translate(0, 0)",opacity:"1"},i)}static diagonalOut(t,e="50%",s="-50%",i=300){return this.setInitial(t,{transform:"translate(0, 0)",opacity:"1"}),this.animateTo(t,{transform:`translate(${e}, ${s})`,opacity:"0"},i)}static zoomIn(t,e="0.4",s=350){return this.setInitial(t,{transform:`scale(${e})`,opacity:"0"}),this.animateTo(t,{transform:"scale(1)",opacity:"1"},s)}static zoomOut(t,e="0.4",s=350){return this.setInitial(t,{transform:"scale(1)",opacity:"1"}),this.animateTo(t,{transform:`scale(${e})`,opacity:"0"},s)}static flipIn(t,e="-90deg",s=400){return this.setInitial(t,{transform:`rotateY(${e})`,opacity:"0",transformStyle:"preserve-3d"}),this.animateTo(t,{transform:"rotateY(0deg)",opacity:"1"},s)}static flipOut(t,e="90deg",s=400){return this.setInitial(t,{transform:"rotateY(0deg)",opacity:"1"}),this.animateTo(t,{transform:`rotateY(${e})`,opacity:"0"},s)}static async bounceIn(t,e=400){return this.setInitial(t,{transform:"scale(0.5)",opacity:"0"}),await this.animateTo(t,{transform:"scale(1.1)",opacity:"1"},.5*e,"ease-out"),this.animateTo(t,{transform:"scale(1)"},.5*e,"ease-in-out")}static async elasticIn(t,e=500){return this.setInitial(t,{transform:"scale(0.3)",opacity:"0"}),await this.animateTo(t,{transform:"scale(1.2)",opacity:"1"},.4*e,"ease-out"),this.animateTo(t,{transform:"scale(1)"},.6*e,"ease-in-out")}static slide(t,e,s,i=300,r="ease"){const n="x"===e?"translateX":"translateY";return this.setInitial(t,{transform:`${n}(${s})`}),this.animateTo(t,{transform:`${n}(0)`},i,r)}static enter(t,e={}){const{opacityFrom:s="0",xFrom:i="0",yFrom:r="20px",scaleFrom:n="1",rotateFrom:a="0deg",duration:o=300,easing:l="ease"}=e;return this.setInitial(t,{opacity:s,transform:`translate(${i}, ${r}) scale(${n}) rotate(${a})`}),this.animateTo(t,{opacity:"1",transform:"translate(0,0) scale(1) rotate(0deg)"},o,l)}static leave(t,e={}){const{opacityTo:s="0",xTo:i="0",yTo:r="20px",scaleTo:n="1",rotateTo:a="0deg",duration:o=300,easing:l="ease"}=e;return this.setInitial(t,{opacity:"1",transform:"translate(0,0) scale(1) rotate(0deg)"}),this.animateTo(t,{opacity:s,transform:`translate(${i}, ${r}) scale(${n}) rotate(${a})`},o,l)}static async queue(t,e){for(const t of e)await t()}}T.enabled=!0;class S{constructor(t,e){this.urls=[],this.ids=new Map,this.historyCache=new Map,this.active=null,this.suppressNextHashChange=!1,this.options={mode:"hash",base:"",debug:!1,anchorLeafRoutes:!0,strictErrors:!0},this.transientData=new Map,t&&(this.urls=t),e&&this.setOptions(e),this.loadIds(this.urls)}setOptions(t){this.options={...this.options,...t,base:this.options.base},null!=t?.base&&(this.options.base=this.normalizePath("/"+(t.base||"")+"/"))}log(...t){this.options.debug&&console.debug("[GRouter]",...t)}normalizePath(t){if(!t)return"/";let e=t.replace(/\\/g,"/");return e.startsWith("/")||(e="/"+e),e=e.replace(/\/{2,}/g,"/"),e.length>1&&e.endsWith("/")&&(e=e.slice(0,-1)),e||"/"}escapeRegexLiteral(t){return t.replace(/[.*+?^${}()|[\]\\]/g,"\\$&")}routeSpecificity(t){return t.replace(/:\??[A-Za-z0-9_]+/g,"").length}compilePattern(t){if(t.regexurl&&t.paramKeys&&t.optional)return;const e=!0===t.wildcard||"*"===t.url.trim()||"/*"===t.url.trim();if(!t.wildcard&&t.url.includes("*")){const e=t.url.match(/\*([A-Za-z0-9_]+)/);if(e){const s=e[1];return t.paramKeys=[s],t.optional=[],t.regexurl=new RegExp("^"+this.escapeRegexLiteral(t.url.split("*")[0])+"(.*)$"),t.params||(t.params={}),void(t.params[s]=null)}}const s=this.normalizePath(e?"/*":t.url||"/"),i=/:\??([A-Za-z0-9_]+)/g,r=[],n=new Set;let a=0,o="";if(e)o=".*";else{let e;for(;e=i.exec(s);){const i=e.index,l=e[0],c=e[1],h="?"===l[1];o+=this.escapeRegexLiteral(s.slice(a,i)),r.push(c),h&&n.add(c);let u=t.regex?.[c]??"([^/]+)";h&&!/\?\)$/.test(u)&&(/^\(.*\)$/.test(u)||(u=`(${u})`),u=`${u}?`),o+=u,a=i+l.length}o+=this.escapeRegexLiteral(s.slice(a))}const l=Array.isArray(t.childs)&&t.childs.length>0,c="^"+o+(this.options.anchorLeafRoutes&&!l&&!e?"$":"");t.regexurl=new RegExp(c),t.paramKeys=r,t.optional=Array.from(n),t.params||(t.params={});for(const e of r)e in t.params||(t.params[e]=null);t.url=s}loadIds(t,e){for(const s of t){if(this.ids.has(s.id))throw Error(`${s.id} exits`);s.parent=e??null,this.compilePattern(s),s.default&&(this.defaultRoute=s),this.ids.set(s.id,s),this.log("route loaded:",s.id,s.url),Array.isArray(s.childs)&&s.childs.length&&this.loadIds(s.childs,s)}}prepareGURL(t){return this.compilePattern(t),!!t.regexurl}getGurlFromId(t){return this.ids.get(t)}extractParams(t,e){const s={};if(!t.paramKeys||!t.paramKeys.length)return s;let i=1;for(const r of t.paramKeys){const t=e[i++];null!=t&&(s[r]=t)}return s}async runMiddlewareChain(t,e){const s=[],i=t=>{t&&(Array.isArray(t)?s.push(...t):s.push(t))},r=[];let n=t;for(;n;)r.unshift(n),n=n.parent;for(const t of r)i(t.middleware);for(const t of s){const s=await t(e);if(!1===s)return{ok:!1};if(s&&"object"==typeof s&&"ok"in s&&!s.ok)return{ok:!1,redirect:s.redirect}}return{ok:!0}}orderedRoutes(t){return[...t].sort((t,e)=>this.routeSpecificity(e.url)-this.routeSpecificity(t.url))}async resolvePath(t,e,s){const i=e.filter(t=>!t.wildcard&&"*"!==t.url&&"/*"!==t.url),r=e.filter(t=>t.wildcard||"*"===t.url||"/*"===t.url),n=[...this.orderedRoutes(i),...r];for(const e of n){this.compilePattern(e);const i=t.match(e.regexurl);if(!i)continue;const r={...s??{},...this.extractParams(e,i)};let n=t.replace(e.regexurl,"");if(n=this.normalizePath(n),"/"===n){const t=this.buildUrlFromRouteChain(e,r),s={id:e.id,url:e.url,fullPath:t,params:r,classRef:e.classRef,default:!!e.default,redirect:e.redirect,gurl:e},i=await this.runMiddlewareChain(e,s);return i.ok?s:s.redirect||i.redirect?{...s,redirect:i.redirect||s.redirect}:null}if(e.childs&&e.childs.length){const t=await this.resolvePath(n,e.childs,r);if(t)return t}}return null}async checkUrl(t,e,s){const i=this.normalizePath(t),r=e??this.urls;return await this.resolvePath(i,r,s)}buildUrlFromRouteChain(t,e){const s=[];let i=t;for(;i;)s.unshift(i),i=i.parent;const r=s.map(t=>t.url).map(t=>t.startsWith("/")?t:"/"+t).join("");return this.buildUrlFromTemplate(r,e)}buildUrlFromTemplate(t,e){let s=t;return s=s.replace(/:\??([A-Za-z0-9_]+)/g,(t,s,i,r)=>{const n="?"===r[i+1],a=e?.[s];return null==a||""===a?n?"":`:${s}`:String(a)}),s=s.replace(/\/{2,}/g,"/"),s=this.normalizePath(s),s}getUrlFromParams(t,e){const s=this.ids.get(t);if(!s)return null;this.compilePattern(s);const i=this.buildUrlFromRouteChain(s,e);return/:([A-Za-z0-9_]+)/.test(i)?null:i}parseQueryString(t){if(!t)return null;const e=new URLSearchParams(t),s={};return e.forEach((t,e)=>s[e]=t),Object.keys(s).length?s:null}buildQueryString(t){if(!t)return"";const e=new URLSearchParams;for(const[s,i]of Object.entries(t))null!=i&&e.append(s,String(i));const s=e.toString();return s?`?${s}`:""}currentPathFromLocation(){if("hash"===this.options.mode){const t=window.location.hash||"",e=t.startsWith("#")?t.slice(1):t,[s]=e.split("?");return this.normalizePath(s||"/")}const t=window.location.pathname,e=this.options.base||"";let s=t.startsWith(e)?t.slice(e.length):t;const[i]=s.split("?");return this.normalizePath(i||"/")}currentQueryFromLocation(){const t=window.location.href,e=t.indexOf("?");return-1===e?null:this.parseQueryString(t.slice(e+1))}setLocation(t,e,s=!1){const i=this.buildQueryString(e);if("hash"===this.options.mode){const e="#"+this.normalizePath(t)+i;return void(s?window.location.replace(e):window.location.hash=e)}const r=(this.options.base||"")+this.normalizePath(t)+i;s?window.history.replaceState({},"",r):window.history.pushState({},"",r),this.onLocationChange({synthetic:!0})}navigate(t,e,s){if(t.startsWith("/"))return void this.setLocation(t,s,!1);const i=this.getUrlFromParams(t,e);if(i)this.setLocation(i,s,!1);else if(this.options.strictErrors)throw new Error(`No se pudo construir URL para id="${t}"`)}navigateWithData(t,e,s,i){let r;if(t.startsWith("/"))r=this.normalizePath(t);else if(r=this.getUrlFromParams(t,s),!r&&this.options.strictErrors)throw new Error(`No se pudo construir URL para id="${t}"`);r&&(this.transientData.set(r,e),this.setLocation(r,i,!1))}getDataForCurrent(){const t=this.active?.fullPath??null;return t?this.transientData.get(t)??null:null}getDataForMatch(t){if(!t)return null;const e=this.normalizePath(t.fullPath);return this.transientData.get(e)??null}clearData(t){t?this.transientData.delete(this.normalizePath(t)):this.transientData.clear()}replace(t,e,s){if(t.startsWith("/"))return void this.setLocation(t,s,!0);const i=this.getUrlFromParams(t,e);if(i)this.setLocation(i,s,!0);else if(this.options.strictErrors)throw new Error(`No se pudo construir URL para id="${t}"`)}back(){window.history.back()}removeListener(){this.cb=void 0}setListener(t){this.cb=t}start(t){this.setListener(t),this.historyCache=new Map,"hash"===this.options.mode?(this.hashchangebind||(this.hashchangebind=t=>this.hashchange(t)),window.removeEventListener("hashchange",this.hashchangebind),window.addEventListener("hashchange",this.hashchangebind,!1)):(this.popstatebind||(this.popstatebind=t=>this.onLocationChange({synthetic:!1})),window.removeEventListener("popstate",this.popstatebind),window.addEventListener("popstate",this.popstatebind,!1));const e=this.currentPathFromLocation(),s=this.currentQueryFromLocation();if(this.defaultRoute){const t=this.getUrlFromParams(this.defaultRoute.id);if(("hash"===this.options.mode&&(!window.location.hash||"#"===window.location.hash||"#/"===window.location.hash)||"history"===this.options.mode&&("/"===e||""===e))&&t)return t!==e&&this.setLocation(t,void 0,!0),void this.onLocationChange({synthetic:!0})}this.onLocationChange({newURL:window.location.href,oldURL:"",query:s??void 0})}async hashchange(t){if(this.suppressNextHashChange)return void(this.suppressNextHashChange=!1);const e=t?.newURL||window.location.href,s=t?.oldURL||"";await this.onLocationChange({newURL:e,oldURL:s})}async onLocationChange(t){const e=this.currentPathFromLocation(),s=t.query??this.currentQueryFromLocation()??null;this.options.mode,this.options.mode;const i=this.options.base,r=this.active;let n=this.historyCache.get(e)||null;if(n){s?n.query={...s}:delete n.query;const t=this.ids.get(n.id),e=await this.runMiddlewareChain(t,n);if(!e.ok){const t=n.redirect||e.redirect;if(t)return void this.setLocation(t,void 0,!1);this.active=null;try{this.cb?.("notfound",null,r??null)}catch(t){this.log("Callback error:",t)}return}if(this.beforeChange){if(!1===await this.beforeChange(r??null,n)){if(this.log("Navigation cancelled by beforeChange"),"history"===this.options.mode&&r){const t=i+r.fullPath+this.buildQueryString(r.query);return window.history.replaceState({},"",t),void(this.active=r)}return void("hash"===this.options.mode&&r&&(this.suppressNextHashChange=!0,this.setLocation(r.fullPath,r.query,!0)))}}this.active=n;try{this.cb?.("history",this.active,r??null)}catch(t){this.log("Callback error:",t)}if(this.afterChange)try{await this.afterChange(r??null,this.active)}catch(t){this.log("afterChange error:",t)}return void this.log("route history:",n)}{const t=await this.resolvePath(e,this.urls);if(t){s?t.query={...s}:delete t.query;const e=t.redirect;if(e)return void this.setLocation(e,void 0,!1);if(this.beforeChange){if(!1===await this.beforeChange(r??null,t)){if(this.log("Navigation cancelled by beforeChange"),"history"===this.options.mode&&r){const t=i+r.fullPath+this.buildQueryString(r.query);return window.history.replaceState({},"",t),void(this.active=r)}return void("hash"===this.options.mode&&r&&(this.suppressNextHashChange=!0,this.setLocation(r.fullPath,r.query,!0)))}}const n=t;this.active=n;const a=n.fullPath;this.historyCache.set(a,n);try{this.cb?.("new",this.active,r??null)}catch(t){this.log("Callback error:",t)}if(this.afterChange)try{await this.afterChange(r??null,this.active)}catch(t){this.log("afterChange error:",t)}return void this.log("route new:",t)}this.active=null;try{this.cb?.("notfound",null,r??null)}catch(t){this.log("Callback error:",t)}return void this.log("route notfound:",e)}}cleanHist(t){if(this.historyCache=new Map,t){const e=this.buildUrlFromRouteChain(t);this.active={id:t.id,url:t.url,fullPath:e,params:{},classRef:t.classRef,default:!!t.default,redirect:t.redirect},this.historyCache.set(e,this.active)}}removeHist(t){let e=null;for(const[s,i]of this.historyCache)if(i.object===t.obj){e=s;break}e&&this.historyCache.delete(e)}getParams(){return this.active?.params??{}}addGurl(t,e){if(this.ids.has(t.id))throw Error(`${t.id} exits`);let s;if(e&&(s=this.ids.get(e),!s))throw Error(`${e} not exits`);this.compilePattern(t),this.ids.set(t.id,t),s?(t.parent=s,s.childs||(s.childs=[]),s.childs.push(t)):this.urls.push(t),t.childs&&t.childs.length&&this.loadIds(t.childs,t)}destroy(){this.hashchangebind&&window.removeEventListener("hashchange",this.hashchangebind),this.popstatebind&&window.removeEventListener("popstate",this.popstatebind),this.historyCache.clear(),this.cb=void 0,this.active=null}escapeRegExp(t){return this.escapeRegexLiteral(t)}tryGetUrlFromParams(t,e){try{return this.getUrlFromParams(t,e)}catch{return null}}getMatch(){return this.active}getAllRoutes(){return[...this.ids.values()]}async matchPath(t){const[e,s]=t.split("?"),i=this.normalizePath(e||"/"),r=this.historyCache.get(i);if(r){if(s){const t=this.parseQueryString(s);t?r.query=t:delete r.query}return r}const n=await this.resolvePath(i,this.urls);if(!n)return null;const a=this.ids.get(n.id),o=await this.runMiddlewareChain(a,n);if(!o.ok)return o.redirect?{...n,redirect:o.redirect}:null;if(s){const t=this.parseQueryString(s);t?n.query=t:delete n.query}return n}getRouteChain(t){const e=t?.gurl??this.active?.gurl;if(!e)return[];const s=[];let i=e;for(;i;)s.unshift(i),i=i.parent??null;return s}}class I{constructor(){this.namespaces=new Map}getNamespace(t="default"){return this.namespaces.has(t)||this.namespaces.set(t,new Map),this.namespaces.get(t)}addListener(t,e,s={}){if("*"===t&&!s.namespace){const i=this.getNamespace("__GLOBAL__"),r=i.get(t)||[];return r.push({handler:e,once:s.once,priority:s.priority??0}),r.sort((t,e)=>(e.priority??0)-(t.priority??0)),i.set(t,r),e}const i=this.getNamespace(s.namespace),r=i.get(t)||[];return r.push({handler:e,once:s.once,priority:s.priority??0}),r.sort((t,e)=>(e.priority??0)-(t.priority??0)),i.set(t,r),e}on(t,e,s={}){return this.addListener(t,e,s)}once(t,e,s={}){return this.addListener(t,e,{...s,once:!0})}subscribe(t,e,s){return this.on(t,e,s),{off:()=>this.off(t,e,s?.namespace)}}off(t,e,s="default"){const i=this.getNamespace(s),r=i.get(t);r&&i.set(t,r.filter(t=>t.handler!==e))}offAll(t,e="default"){t?this.getNamespace(e).delete(t):this.removeAllListeners(e)}async emit(t,e,s="default",i){const r=this.getNamespace(s),n=r.get(t),a=r.get("*"),o=this.namespaces.get("__GLOBAL__")?.get("*")??[],l=[...n??[],...a??[],...o??[]];if(0===l.length)return;const c=async(i,r=!1)=>{try{if(r){const r=i.handler;await r({event:t,payload:e,namespace:s})}else{const t=i.handler;await t(e)}}catch(e){console.error(`[GEvents] Error en handler "${String(t)}" (${s}):`,e)}if(i.once){const e="*"!==t||s?s:"__GLOBAL__";this.off(t,i.handler,e)}},h=async t=>{const e=(a?.includes(t)??!1)||(o?.includes(t)??!1);await c(t,e)};if(i?.sequential)for(const t of l)await h(t);else await Promise.all(l.map(h))}waitFor(t,e,s="default"){return new Promise((i,r)=>{const n=e=>{clearTimeout(a),this.off(t,n,s),i(e)};let a;e&&(a=setTimeout(()=>{this.off(t,n,s),r(new Error(`Timeout esperando evento "${String(t)}" (${s})`))},e)),this.on(t,n,{namespace:s})})}waitForComplete(t,e,s="default"){return new Promise((i,r)=>{let n;const a=async e=>{clearTimeout(n);const r=this.getNamespace(s).get(t);if(r&&r.length>0)try{await Promise.all(r.map(async s=>{try{await s.handler(e)}catch(e){console.error(`[GEvents] Error en waitForComplete("${String(t)}"):`,e)}}))}catch(e){console.error(`[GEvents] Error ejecutando handlers en waitForComplete("${String(t)}")`,e)}this.off(t,a,s),i(e)};e&&(n=setTimeout(()=>{this.off(t,a,s),r(new Error(`Timeout esperando evento completo "${String(t)}" (${s})`))},e)),this.on(t,a,{namespace:s})})}removeAllListeners(t){t?this.namespaces.delete(t):this.namespaces.clear()}count(t){return[...t.values()].reduce((t,e)=>t+(e?.length??0),0)}listenerCount(t){if(t)return this.count(this.namespaces.get(t)??new Map);let e=0;for(const t of this.namespaces.values())e+=this.count(t);return e}listNamespaces(){return[...this.namespaces.keys()]}hasListeners(t,e="default"){const s=this.namespaces.get(e);return!!s?.get(t)?.length}getListeners(t,e="default"){return[...this.namespaces.get(e)?.get(t)??[]]}}class R{onConstruct(){}onInit(){}onTemplateReady(){}onConnect(){}onDisconnect(){}onDestroy(){}}const _=new I;class E extends R{onConstruct(){_.on("urlChanged",({state:t,current:e,prev:s})=>this.onRouteChange(t,e,s),{namespace:"router"})}onRouteChange(t,e,s){}}class x{static init(t,e){return this._router||(this._router=new S(t,e),this._router.start((t,e,s)=>_.emit("urlChanged",{state:t,current:e,prev:s},"router"))),this._router}static getRouter(){return this._router}}export{T as Animations,E as AppGTplComponent,C as Component,L as Directive,_ as GBus,s as GDirectiveBase,I as GEvents,S as GRouter,x as GRouterService,R as GTplComponentBase,v as GWatcher,y as getControllerFromComponent,d as getCtrl,p as getFlags,m as getGTPL,g as getGtplFromComponent,f as getMeta,n as getRegisteredComponent,w as isHostCreated};
+import { __decorate } from 'tslib';
+import GTPL from '@mpeliz/gtpl';
+
+class GDirectiveBase {
+    constructor(ele, value, root, arg) {
+        this.ele = ele;
+        this.value = value;
+        this.root = root.Root;
+        this.argument = arg;
+        this.onInit?.();
+    }
+}
+
+const SHEET_CACHE = new WeakMap();
+function applyComponentStyles(cmp, meta, mode) {
+    const styleMode = meta.styleMode;
+    const sr = cmp.$host;
+    const canAdopt = !!(sr && 'adoptedStyleSheets' in sr) && meta.stylesInline.length > 0;
+    if (styleMode !== 'lazy' && canAdopt) {
+        const key = cmp.constructor;
+        let sheet = SHEET_CACHE.get(key);
+        if (!sheet) {
+            sheet = new CSSStyleSheet();
+            sheet.replaceSync(meta.stylesInline.join('\n'));
+            SHEET_CACHE.set(key, sheet);
+        }
+        const current = [...sr.adoptedStyleSheets];
+        if (!current.includes(sheet)) {
+            sr.adoptedStyleSheets = [...current, sheet];
+        }
+    }
+    else {
+        switch (styleMode) {
+            case 'inline':
+            case 'file': {
+                for (const css of meta.stylesInline) {
+                    const style = document.createElement('style');
+                    style.textContent = css;
+                    cmp.$host.appendChild(style);
+                }
+                for (const href of meta.styleUrls) {
+                    const link = document.createElement('link');
+                    link.rel = 'stylesheet';
+                    link.href = href;
+                    cmp.$host.appendChild(link);
+                }
+                break;
+            }
+        }
+    }
+}
+async function ensureCompiledTemplate(classMeta) {
+    if (classMeta.templateFactory)
+        return;
+    if (classMeta.compilePromise) {
+        await classMeta.compilePromise;
+        return;
+    }
+    classMeta.compilePromise = (async () => {
+        try {
+            const html = classMeta.templateHtml ?? (await (await fetch(classMeta.templateUrl)).text());
+            const compiled = GTPL.jit.GCode(html);
+            classMeta.templateFactory = GTPL.jit.GCompile(compiled);
+        }
+        catch (err) {
+            console.error('[GTPL compile error]', { url: classMeta.templateUrl, err });
+            throw err;
+        }
+        finally {
+            classMeta.compilePromise = null;
+        }
+    })();
+    await classMeta.compilePromise;
+}
+function instantiateTemplate(controller, generator) {
+    const options = { root: controller, generator };
+    const gtplobj = new GTPL.GTpl(options);
+    return gtplobj;
+}
+
+const COMPONENT_REGISTRY = new Map();
+function getRegisteredComponent(name) {
+    return COMPONENT_REGISTRY.get(name);
+}
+function toKebabCase(x) {
+    return x
+        .replace(/([a-z0-9])([A-Z])/g, '$1-$2')
+        .replace(/([A-Z])([A-Z][a-z])/g, '$1-$2')
+        .toLowerCase();
+}
+function defineHidden(target, key, value, opts) {
+    Object.defineProperty(target, key, {
+        value,
+        enumerable: opts?.enumerable ?? false,
+        writable: opts?.writable ?? false,
+        configurable: opts?.configurable ?? false,
+    });
+}
+const isLikelyHtml = (s) => !!s && /^\s*</.test(s) && s.includes('>');
+const COMP_CTRL = Symbol('COMP_CTRL');
+const COMP_FLAGS = Symbol('COMP_FLAGS');
+const COMP_GTPL = Symbol('COMP_GTPL');
+const CLASS_META = Symbol('CLASS_META');
+const HOST_CREATE = Symbol('HOST_CREATE');
+const getCtrl = (host) => host[COMP_CTRL];
+const getFlags = (host) => host[COMP_FLAGS];
+const getGTPL = (host) => host[COMP_GTPL];
+const getMeta = (ctor) => ctor[CLASS_META];
+function getControllerFromComponent(component) {
+    return component[COMP_CTRL];
+}
+function getGtplFromComponent(component) {
+    return component[COMP_GTPL];
+}
+function isHostCreated(ele) {
+    return (ele[HOST_CREATE] === true) ? true : false;
+}
+function initComponentHost(host, ControllerClass, baseMeta, useWebComponent, ...args) {
+    const ctrl = new ControllerClass(...args);
+    defineHidden(host, COMP_CTRL, ctrl);
+    defineHidden(ctrl, "$el", host);
+    const flags = { firstRender: true, stylesApplied: false, destroyed: false };
+    defineHidden(host, COMP_FLAGS, flags);
+    defineHidden(ctrl, "destroy", function () {
+        ctrl.onDestroy?.();
+        flags.destroyed = true;
+        try {
+            host[COMP_GTPL]?.destroy?.();
+        }
+        catch (ex) {
+            console.error(ex);
+        }
+        flags.firstRender = false;
+        if (!useWebComponent)
+            host.innerHTML = '';
+        if (useWebComponent || host[HOST_CREATE])
+            host.remove();
+        host[COMP_GTPL] = null;
+    }.bind(ctrl));
+    ctrl.onConstruct?.(...args);
+    const ctor = useWebComponent ? host.constructor : ControllerClass.__gcomponent__;
+    if (!Object.prototype.hasOwnProperty.call(ctor, CLASS_META)) {
+        defineHidden(ctor, CLASS_META, { ...baseMeta });
+    }
+    const classMeta = getMeta(ctor);
+    if (useWebComponent) {
+        if (!classMeta.shadow) {
+            host.$host = host;
+        }
+        else if (classMeta.shadow === true) {
+            host.$host = host.attachShadow({ mode: "open" });
+        }
+        else {
+            host.$host = host.attachShadow(classMeta.shadow);
+        }
+    }
+    else {
+        host.$host = host;
+    }
+    const loadTemplate = () => {
+        const gtpl = instantiateTemplate(ctrl, classMeta.templateFactory);
+        defineHidden(host, COMP_GTPL, gtpl, { writable: true });
+        ctrl.onInit?.();
+    };
+    if (classMeta.templateFactory) {
+        loadTemplate();
+    }
+    else {
+        ensureCompiledTemplate(classMeta).then(() => {
+            if (!flags.destroyed)
+                loadTemplate();
+        });
+    }
+    const finishSetup = () => {
+        if (!flags.stylesApplied) {
+            flags.stylesApplied = true;
+            if (classMeta.styleMode !== "lazy") {
+                applyComponentStyles(host, classMeta);
+            }
+        }
+        if (flags.firstRender) {
+            flags.firstRender = false;
+            host[COMP_GTPL]?.addTo(host.$host);
+            ctrl.onTemplateReady?.();
+        }
+    };
+    Promise.resolve().then(finishSetup);
+    return host;
+}
+class GWatcher extends HTMLElement {
+    constructor(ctrl) {
+        super();
+        this.ctrl = ctrl;
+        this.style.display = "none";
+        this.style.position = "absolute";
+    }
+    connectedCallback() {
+        if (this.ctrl) {
+            this.ctrl.onConnect?.(this);
+            return;
+        }
+        const host = this.parentNode;
+        if (!host)
+            return;
+        const ctrl = getControllerFromComponent(host);
+        ctrl?.onConnect?.();
+    }
+    disconnectedCallback() {
+        if (this.ctrl) {
+            this.ctrl.onDisconnect?.(this);
+            return;
+        }
+        const host = this.parentNode;
+        if (!host)
+            return;
+        const ctrl = getControllerFromComponent(host);
+        ctrl?.onDisconnect?.();
+    }
+}
+if (!customElements.get("g-watcher")) {
+    customElements.define("g-watcher", GWatcher);
+}
+function Component(config) {
+    return function (ControllerClass) {
+        const options = config;
+        const asWebComponent = options.asWebComponent != null ? options.asWebComponent : true;
+        const inferredTag = toKebabCase(ControllerClass.name);
+        const tagName = options.tag ?? inferredTag;
+        if (!tagName.includes('-')) {
+            throw new Error(`Custom element name "${tagName}" must contain a hyphen (-). Use 'tag' in @Component.`);
+        }
+        let shadowOpt = false;
+        if (options.shadow === true)
+            shadowOpt = { mode: 'open' };
+        else if (options.shadow === false)
+            shadowOpt = false;
+        else if (typeof options.shadow === 'object')
+            shadowOpt = options.shadow;
+        const aotTemplate = ControllerClass.__gtemplate__ ?? null;
+        const styleMode = options.styleMode ?? 'global';
+        let styleUrls = [];
+        let stylesInline = [];
+        let templateHtml = null;
+        let templateUrl = null;
+        if (aotTemplate) {
+            styleUrls = ControllerClass.__styleUrls__ ?? [];
+            stylesInline = ControllerClass.__stylesInline__ ?? [];
+        }
+        else {
+            const tStr = typeof options.template === 'string' ? options.template : null;
+            const tObj = typeof options.template === 'object' && options.template ? options.template.html ?? null : null;
+            if (tObj != null)
+                templateHtml = tObj;
+            else if (tStr != null)
+                isLikelyHtml(tStr) ? (templateHtml = tStr) : (templateUrl = tStr);
+            if (options.style) {
+                const arr = Array.isArray(options.style) ? options.style : [options.style];
+                for (const s of arr) {
+                    const t = s.trim();
+                    if (/\.(scss|sass)$/i.test(t))
+                        continue;
+                    if (/\.css$/i.test(t))
+                        styleUrls.push(t);
+                    else
+                        stylesInline.push(s);
+                }
+            }
+        }
+        const baseMeta = {
+            templateHtml,
+            templateUrl,
+            templateFactory: aotTemplate,
+            styleMode,
+            styleUrls,
+            stylesInline,
+            shadow: shadowOpt,
+            compilePromise: null,
+            asWebComponent
+        };
+        let GeneratedComponent = null;
+        if (asWebComponent) {
+            GeneratedComponent = class extends HTMLElement {
+                constructor(...args) {
+                    super();
+                    initComponentHost(this, ControllerClass, baseMeta, true, ...args);
+                }
+                connectedCallback() {
+                    getCtrl(this).onConnect?.();
+                }
+                disconnectedCallback() {
+                    getCtrl(this)?.onDisconnect?.();
+                }
+            };
+            if (!customElements.get(tagName))
+                customElements.define(tagName, GeneratedComponent);
+        }
+        else {
+            GeneratedComponent = class {
+                constructor(ele, ...args) {
+                    if (!ele) {
+                        ele = GTPL.utils.globalObject.document.createElement('div');
+                        ele.setAttribute('g-component', tagName);
+                        defineHidden(ele, HOST_CREATE, true);
+                    }
+                    ele?.appendChild(new GWatcher(this));
+                    return initComponentHost(ele, ControllerClass, baseMeta, false, ...args);
+                }
+                connectedCallback() {
+                    getCtrl(this).onConnect?.();
+                }
+                disconnectedCallback() {
+                    getCtrl(this)?.onDisconnect?.();
+                }
+            };
+        }
+        defineHidden(ControllerClass, '__gcomponent__', GeneratedComponent);
+        if (!COMPONENT_REGISTRY.has(tagName)) {
+            COMPONENT_REGISTRY.set(tagName, {
+                asWebComponent,
+                ControllerClass: ControllerClass,
+                ComponentClass: GeneratedComponent
+            });
+        }
+        else {
+            console.warn(`Component with name "${tagName}" is already defined.`);
+        }
+        return ControllerClass;
+    };
+}
+
+function isValidAttributeName(name) {
+    return /^[a-zA-Z_][a-zA-Z0-9_\-:.]*$/.test(name);
+}
+function Directive(config) {
+    return function (constructor) {
+        const name = config?.name ??
+            constructor.name
+                .replace(/Directive$/, '')
+                .replace(/([A-Z])/g, '-$1')
+                .toLowerCase()
+                .slice(1);
+        if (!name) {
+            throw new Error('@Directive() requiere un nombre válido');
+        }
+        if (!isValidAttributeName(name)) {
+            throw new Error(`Nombre de directiva inválido: "${name}". Debe ser un nombre de atributo HTML válido.`);
+        }
+        const success = GTPL.GregisterDirective(name, constructor);
+        if (!success) {
+            console.warn(`⚠️ La directiva "${name}" ya está registrada.`);
+        }
+        return constructor;
+    };
+}
+
+let GSet = class GSet extends GDirectiveBase {
+    onInit() {
+        if (this.argument && this.argument.trim()) {
+            this.path = this.argument.trim().split('.');
+            return;
+        }
+        const legacy = this.ele.getAttribute("g-set-var");
+        if (legacy && legacy.trim()) {
+            this.path = legacy.trim().split('.');
+            this.ele.removeAttribute("g-set-var");
+            return;
+        }
+        console.error('g-set: falta el nombre de la propiedad. ' +
+            'Usa g-set:prop / g-set:obj.prop o g-set-var="prop".');
+    }
+    applyPathSet(target, value) {
+        if (!target || !this.path || this.path.length === 0)
+            return;
+        const path = this.path;
+        if (path.length > 1) {
+            const reduce = (obj, index, fin) => {
+                if (obj == null)
+                    return undefined;
+                if (index === fin)
+                    return obj[path[index]];
+                return reduce(obj[path[index]], index + 1, fin);
+            };
+            const parent = reduce(target, 0, path.length - 2);
+            if (!parent)
+                return;
+            const lastKey = path[path.length - 1];
+            parent[lastKey] = value;
+        }
+        else {
+            const lastKey = path[0];
+            target[lastKey] = value;
+        }
+    }
+    setAttribute(name, value) {
+        if (!this.path || this.path.length === 0)
+            return;
+        const controller = getControllerFromComponent(this.ele);
+        if (!controller)
+            return;
+        this.applyPathSet(controller, value);
+    }
+    getAttribute(name) {
+        return null;
+    }
+    removeAttribute(name) { }
+};
+GSet = __decorate([
+    Directive({
+        name: "g-set",
+    })
+], GSet);
+
+let GClass = class GClass extends GDirectiveBase {
+    onInit() {
+        const current = this.ele.getAttribute('class');
+        this.cls = current ? current.split(/\s+/).filter(Boolean) : [];
+    }
+    setAttribute(name, value) {
+        const ele = this.ele;
+        this.cls = Array.isArray(value) ? value : String(value || '').split(/\s+/);
+        if (this.cls.length)
+            ele.setAttribute('class', this.cls.join(' '));
+        else
+            ele.removeAttribute('class');
+    }
+    getAttribute(name) {
+        return this.cls?.length ? this.cls.join(' ') : null;
+    }
+    removeAttribute(name) {
+        const ele = this.ele;
+        ele.removeAttribute('class');
+        this.cls = [];
+    }
+};
+GClass = __decorate([
+    Directive({
+        name: "g-class",
+    })
+], GClass);
+
+let GComponent = class GComponent extends GDirectiveBase {
+    destroyComponent() {
+        if (this.webc) {
+            const prevCtrl = getControllerFromComponent(this.webc);
+            prevCtrl?.destroy();
+            if (!this.regc?.asWebComponent) {
+                if (isHostCreated(this.webc))
+                    this.webc.remove();
+                else
+                    this.webc.setAttribute('g-component', '');
+            }
+            this.webc = undefined;
+            this.regc = undefined;
+        }
+    }
+    createComponent(tagName) {
+        const nextTag = String(tagName ?? '').trim();
+        if (!nextTag) {
+            this.destroyComponent();
+            this.value = '';
+            this.ele.removeAttribute('g-component');
+            return;
+        }
+        if (this.value === nextTag && this.webc)
+            return;
+        this.destroyComponent();
+        const regc = getRegisteredComponent(nextTag);
+        if (!regc) {
+            console.warn(`[g-component] componente "${nextTag}" no registrado`);
+            return;
+        }
+        this.value = nextTag;
+        this.ele.setAttribute('g-component', this.value);
+        this.ele.innerHTML = "";
+        if (regc.asWebComponent) {
+            const webc = new regc.ComponentClass();
+            this.ele.appendChild(webc);
+            this.webc = webc;
+        }
+        else {
+            this.webc = new regc.ComponentClass(this.ele);
+        }
+        this.regc = regc;
+    }
+    onInit() {
+        this.createComponent(this.value);
+    }
+    setAttribute(name, value) {
+        this.createComponent(String(value ?? ''));
+    }
+    getAttribute(name) {
+        return this.value ?? '';
+    }
+    removeAttribute(name) {
+        this.destroyComponent();
+        this.value = '';
+        this.ele.removeAttribute('g-component');
+    }
+};
+GComponent = __decorate([
+    Directive({
+        name: "g-component",
+    })
+], GComponent);
+
+class Animations {
+    static enable() {
+        Animations.enabled = true;
+    }
+    static disable() {
+        Animations.enabled = false;
+    }
+    static setInitial(element, styles) {
+        if (!Animations.enabled)
+            return;
+        element.style.transition = "none";
+        element.style.pointerEvents = "none";
+        Object.assign(element.style, styles);
+    }
+    static resetStyles(el) {
+        el.style.removeProperty("opacity");
+        el.style.removeProperty("transform");
+        el.style.removeProperty("transition");
+        el.style.removeProperty("pointer-events");
+    }
+    static animateTo(element, styles, duration = 300, easing = "ease") {
+        if (!Animations.enabled) {
+            Object.assign(element.style, styles);
+            return Promise.resolve();
+        }
+        return new Promise(resolve => {
+            requestAnimationFrame(() => {
+                requestAnimationFrame(() => {
+                    element.style.transition = `all ${duration}ms ${easing}`;
+                    Object.assign(element.style, styles);
+                    const onEnd = (ev) => {
+                        if (ev.target !== element)
+                            return;
+                        element.removeEventListener("transitionend", onEnd);
+                        element.style.pointerEvents = "auto";
+                        resolve();
+                    };
+                    element.addEventListener("transitionend", onEnd);
+                });
+            });
+        });
+    }
+    static wait(ms) {
+        return new Promise(res => setTimeout(res, ms));
+    }
+    static stopTransition(el) {
+        const computed = getComputedStyle(el);
+        el.style.transition = "none";
+        el.style.transform = computed.transform;
+        el.style.opacity = computed.opacity;
+    }
+    static fadeIn(el, duration = 300) {
+        this.setInitial(el, { opacity: "0" });
+        return this.animateTo(el, { opacity: "1" }, duration);
+    }
+    static fadeOut(el, duration = 300) {
+        this.setInitial(el, { opacity: "1" });
+        return this.animateTo(el, { opacity: "0" }, duration);
+    }
+    static slideInX(el, from = "-100%", duration = 300) {
+        this.setInitial(el, { transform: `translateX(${from})` });
+        return this.animateTo(el, { transform: "translateX(0)" }, duration);
+    }
+    static slideOutX(el, to = "-100%", duration = 300) {
+        this.setInitial(el, { transform: "translateX(0)" });
+        return this.animateTo(el, { transform: `translateX(${to})` }, duration);
+    }
+    static slideInY(el, from = "100%", duration = 300) {
+        this.setInitial(el, { transform: `translateY(${from})` });
+        return this.animateTo(el, { transform: "translateY(0)" }, duration);
+    }
+    static slideOutY(el, to = "100%", duration = 300) {
+        this.setInitial(el, { transform: "translateY(0)" });
+        return this.animateTo(el, { transform: `translateY(${to})` }, duration);
+    }
+    static scaleIn(el, from = "0.6", duration = 300) {
+        this.setInitial(el, { transform: `scale(${from})`, opacity: "0" });
+        return this.animateTo(el, { transform: "scale(1)", opacity: "1" }, duration);
+    }
+    static scaleOut(el, to = "0.6", duration = 300) {
+        this.setInitial(el, { transform: "scale(1)", opacity: "1" });
+        return this.animateTo(el, { transform: `scale(${to})`, opacity: "0" }, duration);
+    }
+    static rotateIn(el, from = "-20deg", duration = 300) {
+        this.setInitial(el, { transform: `rotate(${from})`, opacity: "0" });
+        return this.animateTo(el, { transform: "rotate(0)", opacity: "1" }, duration);
+    }
+    static rotateOut(el, to = "20deg", duration = 300) {
+        this.setInitial(el, { transform: "rotate(0)", opacity: "1" });
+        return this.animateTo(el, { transform: `rotate(${to})`, opacity: "0" }, duration);
+    }
+    static slideFadeInY(el, from = "20px", duration = 300) {
+        this.setInitial(el, { transform: `translateY(${from})`, opacity: "0" });
+        return this.animateTo(el, { transform: "translateY(0)", opacity: "1" }, duration);
+    }
+    static slideFadeInX(el, from = "-20px", duration = 300) {
+        this.setInitial(el, { transform: `translateX(${from})`, opacity: "0" });
+        return this.animateTo(el, { transform: "translateX(0)", opacity: "1" }, duration);
+    }
+    static diagonalIn(el, dx = "-50%", dy = "50%", duration = 300) {
+        this.setInitial(el, { transform: `translate(${dx}, ${dy})`, opacity: "0" });
+        return this.animateTo(el, { transform: "translate(0, 0)", opacity: "1" }, duration);
+    }
+    static diagonalOut(el, dx = "50%", dy = "-50%", duration = 300) {
+        this.setInitial(el, { transform: "translate(0, 0)", opacity: "1" });
+        return this.animateTo(el, { transform: `translate(${dx}, ${dy})`, opacity: "0" }, duration);
+    }
+    static zoomIn(el, from = "0.4", duration = 350) {
+        this.setInitial(el, { transform: `scale(${from})`, opacity: "0" });
+        return this.animateTo(el, { transform: "scale(1)", opacity: "1" }, duration);
+    }
+    static zoomOut(el, to = "0.4", duration = 350) {
+        this.setInitial(el, { transform: "scale(1)", opacity: "1" });
+        return this.animateTo(el, { transform: `scale(${to})`, opacity: "0" }, duration);
+    }
+    static flipIn(el, from = "-90deg", duration = 400) {
+        this.setInitial(el, {
+            transform: `rotateY(${from})`,
+            opacity: "0",
+            transformStyle: "preserve-3d",
+        });
+        return this.animateTo(el, {
+            transform: "rotateY(0deg)",
+            opacity: "1",
+        }, duration);
+    }
+    static flipOut(el, to = "90deg", duration = 400) {
+        this.setInitial(el, { transform: "rotateY(0deg)", opacity: "1" });
+        return this.animateTo(el, { transform: `rotateY(${to})`, opacity: "0" }, duration);
+    }
+    static async bounceIn(el, duration = 400) {
+        this.setInitial(el, { transform: "scale(0.5)", opacity: "0" });
+        await this.animateTo(el, { transform: "scale(1.1)", opacity: "1" }, duration * 0.5, "ease-out");
+        return this.animateTo(el, { transform: "scale(1)" }, duration * 0.5, "ease-in-out");
+    }
+    static async elasticIn(el, duration = 500) {
+        this.setInitial(el, { transform: "scale(0.3)", opacity: "0" });
+        await this.animateTo(el, { transform: "scale(1.2)", opacity: "1" }, duration * 0.4, "ease-out");
+        return this.animateTo(el, { transform: "scale(1)" }, duration * 0.6, "ease-in-out");
+    }
+    static slide(el, axis, distance, duration = 300, easing = "ease") {
+        const prop = axis === "x" ? "translateX" : "translateY";
+        this.setInitial(el, { transform: `${prop}(${distance})` });
+        return this.animateTo(el, { transform: `${prop}(0)` }, duration, easing);
+    }
+    static enter(el, opts = {}) {
+        const { opacityFrom = "0", xFrom = "0", yFrom = "20px", scaleFrom = "1", rotateFrom = "0deg", duration = 300, easing = "ease" } = opts;
+        this.setInitial(el, {
+            opacity: opacityFrom,
+            transform: `translate(${xFrom}, ${yFrom}) scale(${scaleFrom}) rotate(${rotateFrom})`
+        });
+        return this.animateTo(el, {
+            opacity: "1",
+            transform: "translate(0,0) scale(1) rotate(0deg)"
+        }, duration, easing);
+    }
+    static leave(el, opts = {}) {
+        const { opacityTo = "0", xTo = "0", yTo = "20px", scaleTo = "1", rotateTo = "0deg", duration = 300, easing = "ease" } = opts;
+        this.setInitial(el, {
+            opacity: "1",
+            transform: "translate(0,0) scale(1) rotate(0deg)"
+        });
+        return this.animateTo(el, {
+            opacity: opacityTo,
+            transform: `translate(${xTo}, ${yTo}) scale(${scaleTo}) rotate(${rotateTo})`
+        }, duration, easing);
+    }
+    static async queue(el, animations) {
+        for (const anim of animations) {
+            await anim();
+        }
+    }
+}
+Animations.enabled = true;
+
+class GRouter {
+    constructor(urlconfig, opts) {
+        this.urls = [];
+        this.ids = new Map();
+        this.historyCache = new Map();
+        this.active = null;
+        this.suppressNextHashChange = false;
+        this.options = {
+            mode: "hash",
+            base: "",
+            debug: false,
+            anchorLeafRoutes: true,
+            strictErrors: true,
+        };
+        this.transientData = new Map();
+        if (urlconfig)
+            this.urls = urlconfig;
+        if (opts)
+            this.setOptions(opts);
+        this.loadIds(this.urls);
+    }
+    setOptions(opts) {
+        this.options = { ...this.options, ...opts, base: this.options.base };
+        if (opts?.base != null) {
+            this.options.base = this.normalizePath("/" + (opts.base || "") + "/");
+        }
+    }
+    log(...args) {
+        if (this.options.debug) {
+            console.debug("[GRouter]", ...args);
+        }
+    }
+    normalizePath(input) {
+        if (!input)
+            return "/";
+        let s = input.replace(/\\/g, "/");
+        if (!s.startsWith("/"))
+            s = "/" + s;
+        s = s.replace(/\/{2,}/g, "/");
+        if (s.length > 1 && s.endsWith("/"))
+            s = s.slice(0, -1);
+        return s || "/";
+    }
+    escapeRegexLiteral(s) {
+        return s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    }
+    routeSpecificity(url) {
+        const literals = url.replace(/:\??[A-Za-z0-9_]+/g, "");
+        return literals.length;
+    }
+    compilePattern(route) {
+        if (route.regexurl && route.paramKeys && route.optional)
+            return;
+        const isWildcard = route.wildcard === true || route.url.trim() === "*" || route.url.trim() === "/*";
+        if (!route.wildcard && route.url.includes("*")) {
+            const m = route.url.match(/\*([A-Za-z0-9_]+)/);
+            if (m) {
+                const key = m[1];
+                route.paramKeys = [key];
+                route.optional = [];
+                route.regexurl = new RegExp("^" + this.escapeRegexLiteral(route.url.split("*")[0]) + "(.*)$");
+                if (!route.params)
+                    route.params = {};
+                route.params[key] = null;
+                return;
+            }
+        }
+        const rawPattern = this.normalizePath(isWildcard ? "/*" : (route.url || "/"));
+        const pattern = rawPattern;
+        const reToken = /:\??([A-Za-z0-9_]+)/g;
+        const paramKeys = [];
+        const optional = new Set();
+        let cursor = 0;
+        let built = "";
+        if (isWildcard) {
+            built = ".*";
+        }
+        else {
+            let m;
+            while ((m = reToken.exec(pattern))) {
+                const start = m.index;
+                const raw = m[0];
+                const name = m[1];
+                const isOptional = raw[1] === "?";
+                built += this.escapeRegexLiteral(pattern.slice(cursor, start));
+                paramKeys.push(name);
+                if (isOptional)
+                    optional.add(name);
+                let frag = route.regex?.[name] ?? "([^/]+)";
+                if (isOptional && !/\?\)$/.test(frag)) {
+                    if (!/^\(.*\)$/.test(frag)) {
+                        frag = `(${frag})`;
+                    }
+                    frag = `${frag}?`;
+                }
+                built += frag;
+                cursor = start + raw.length;
+            }
+            built += this.escapeRegexLiteral(pattern.slice(cursor));
+        }
+        const hasChildren = Array.isArray(route.childs) && route.childs.length > 0;
+        const shouldAnchorLeaf = this.options.anchorLeafRoutes && !hasChildren && !isWildcard;
+        const final = "^" + built + (shouldAnchorLeaf ? "$" : "");
+        route.regexurl = new RegExp(final);
+        route.paramKeys = paramKeys;
+        route.optional = Array.from(optional);
+        if (!route.params)
+            route.params = {};
+        for (const k of paramKeys) {
+            if (!(k in route.params))
+                route.params[k] = null;
+        }
+        route.url = pattern;
+    }
+    loadIds(gurls, parent) {
+        for (const r of gurls) {
+            if (this.ids.has(r.id))
+                throw Error(`${r.id} exits`);
+            r.parent = parent ?? null;
+            this.compilePattern(r);
+            if (r.default)
+                this.defaultRoute = r;
+            this.ids.set(r.id, r);
+            this.log("route loaded:", r.id, r.url);
+            if (Array.isArray(r.childs) && r.childs.length) {
+                this.loadIds(r.childs, r);
+            }
+        }
+    }
+    prepareGURL(gurl) {
+        this.compilePattern(gurl);
+        return !!gurl.regexurl;
+    }
+    getGurlFromId(id) {
+        return this.ids.get(id);
+    }
+    extractParams(route, matchArray) {
+        const out = {};
+        if (!route.paramKeys || !route.paramKeys.length)
+            return out;
+        let idx = 1;
+        for (const key of route.paramKeys) {
+            const val = matchArray[idx++];
+            if (val != null)
+                out[key] = val;
+        }
+        return out;
+    }
+    async runMiddlewareChain(finalRoute, match) {
+        const chain = [];
+        const collect = (mw) => {
+            if (!mw)
+                return;
+            if (Array.isArray(mw))
+                chain.push(...mw);
+            else
+                chain.push(mw);
+        };
+        const stack = [];
+        let cur = finalRoute;
+        while (cur) {
+            stack.unshift(cur);
+            cur = cur.parent;
+        }
+        for (const r of stack)
+            collect(r.middleware);
+        for (const mw of chain) {
+            const res = await mw(match);
+            if (res === false)
+                return { ok: false };
+            if (res && typeof res === "object" && "ok" in res) {
+                if (!res.ok)
+                    return { ok: false, redirect: res.redirect };
+            }
+        }
+        return { ok: true };
+    }
+    orderedRoutes(routes) {
+        return [...routes].sort((a, b) => this.routeSpecificity(b.url) - this.routeSpecificity(a.url));
+    }
+    async resolvePath(path, routes, seedParams) {
+        const normalRoutes = routes.filter(r => !r.wildcard && r.url !== "*" && r.url !== "/*");
+        const wildcardRoutes = routes.filter(r => r.wildcard || r.url === "*" || r.url === "/*");
+        const candidates = [...this.orderedRoutes(normalRoutes), ...wildcardRoutes];
+        for (const r of candidates) {
+            this.compilePattern(r);
+            const m = path.match(r.regexurl);
+            if (!m)
+                continue;
+            const localParams = this.extractParams(r, m);
+            const params = { ...(seedParams ?? {}), ...localParams };
+            let rest = path.replace(r.regexurl, "");
+            rest = this.normalizePath(rest);
+            if (rest === "/") {
+                const fullPath = this.buildUrlFromRouteChain(r, params);
+                const found = {
+                    id: r.id,
+                    url: r.url,
+                    fullPath,
+                    params,
+                    classRef: r.classRef,
+                    default: !!r.default,
+                    redirect: r.redirect,
+                    gurl: r
+                };
+                const mw = await this.runMiddlewareChain(r, found);
+                if (!mw.ok) {
+                    if (found.redirect || mw.redirect) {
+                        return { ...found, redirect: mw.redirect || found.redirect };
+                    }
+                    return null;
+                }
+                return found;
+            }
+            if (r.childs && r.childs.length) {
+                const childMatch = await this.resolvePath(rest, r.childs, params);
+                if (childMatch)
+                    return childMatch;
+            }
+        }
+        return null;
+    }
+    async checkUrl(url, routes, params) {
+        const norm = this.normalizePath(url);
+        const baseRoutes = routes ?? this.urls;
+        const match = await this.resolvePath(norm, baseRoutes, params);
+        return match;
+    }
+    buildUrlFromRouteChain(route, params) {
+        const chain = [];
+        let cur = route;
+        while (cur) {
+            chain.unshift(cur);
+            cur = cur.parent;
+        }
+        const template = chain
+            .map(r => r.url)
+            .map(u => u.startsWith("/") ? u : "/" + u)
+            .join("");
+        return this.buildUrlFromTemplate(template, params);
+    }
+    buildUrlFromTemplate(templateUrl, params) {
+        let url = templateUrl;
+        url = url.replace(/:\??([A-Za-z0-9_]+)/g, (_m, key, offset, full) => {
+            const isOptional = full[offset + 1] === "?";
+            const val = params?.[key];
+            if (val == null || val === "") {
+                return isOptional ? "" : `:${key}`;
+            }
+            return String(val);
+        });
+        url = url.replace(/\/{2,}/g, "/");
+        url = this.normalizePath(url);
+        return url;
+    }
+    getUrlFromParams(id, params) {
+        const r = this.ids.get(id);
+        if (!r)
+            return null;
+        this.compilePattern(r);
+        const url = this.buildUrlFromRouteChain(r, params);
+        if (/:([A-Za-z0-9_]+)/.test(url))
+            return null;
+        return url;
+    }
+    parseQueryString(qs) {
+        if (!qs)
+            return null;
+        const sp = new URLSearchParams(qs);
+        const out = {};
+        sp.forEach((v, k) => (out[k] = v));
+        return Object.keys(out).length ? out : null;
+    }
+    buildQueryString(query) {
+        if (!query)
+            return "";
+        const sp = new URLSearchParams();
+        for (const [k, v] of Object.entries(query)) {
+            if (v == null)
+                continue;
+            sp.append(k, String(v));
+        }
+        const s = sp.toString();
+        return s ? `?${s}` : "";
+    }
+    currentPathFromLocation() {
+        if (this.options.mode === "hash") {
+            const raw = window.location.hash || "";
+            const part = raw.startsWith("#") ? raw.slice(1) : raw;
+            const [p] = part.split("?");
+            return this.normalizePath(p || "/");
+        }
+        const full = window.location.pathname;
+        const base = this.options.base || "";
+        let rel = full.startsWith(base) ? full.slice(base.length) : full;
+        const [p] = rel.split("?");
+        return this.normalizePath(p || "/");
+    }
+    currentQueryFromLocation() {
+        const raw = window.location.href;
+        const qIndex = raw.indexOf("?");
+        if (qIndex === -1)
+            return null;
+        return this.parseQueryString(raw.slice(qIndex + 1));
+    }
+    setLocation(path, query, replace = false) {
+        const qs = this.buildQueryString(query);
+        if (this.options.mode === "hash") {
+            const target = "#" + this.normalizePath(path) + qs;
+            if (replace)
+                window.location.replace(target);
+            else
+                window.location.hash = target;
+            return;
+        }
+        const target = (this.options.base || "") + this.normalizePath(path) + qs;
+        if (replace)
+            window.history.replaceState({}, "", target);
+        else
+            window.history.pushState({}, "", target);
+        this.onLocationChange({ synthetic: true });
+    }
+    navigate(idOrPath, params, query) {
+        if (idOrPath.startsWith("/")) {
+            this.setLocation(idOrPath, query, false);
+            return;
+        }
+        const url = this.getUrlFromParams(idOrPath, params);
+        if (!url) {
+            if (this.options.strictErrors)
+                throw new Error(`No se pudo construir URL para id="${idOrPath}"`);
+            return;
+        }
+        this.setLocation(url, query, false);
+    }
+    navigateWithData(idOrPath, data, params, query) {
+        let path;
+        if (idOrPath.startsWith("/")) {
+            path = this.normalizePath(idOrPath);
+        }
+        else {
+            path = this.getUrlFromParams(idOrPath, params);
+            if (!path && this.options.strictErrors)
+                throw new Error(`No se pudo construir URL para id="${idOrPath}"`);
+        }
+        if (!path)
+            return;
+        this.transientData.set(path, data);
+        this.setLocation(path, query, false);
+    }
+    getDataForCurrent() {
+        const currentPath = this.active?.fullPath ?? null;
+        if (!currentPath)
+            return null;
+        return this.transientData.get(currentPath) ?? null;
+    }
+    getDataForMatch(match) {
+        if (!match)
+            return null;
+        const path = this.normalizePath(match.fullPath);
+        return this.transientData.get(path) ?? null;
+    }
+    clearData(path) {
+        if (path) {
+            this.transientData.delete(this.normalizePath(path));
+        }
+        else {
+            this.transientData.clear();
+        }
+    }
+    replace(idOrPath, params, query) {
+        if (idOrPath.startsWith("/")) {
+            this.setLocation(idOrPath, query, true);
+            return;
+        }
+        const url = this.getUrlFromParams(idOrPath, params);
+        if (!url) {
+            if (this.options.strictErrors)
+                throw new Error(`No se pudo construir URL para id="${idOrPath}"`);
+            return;
+        }
+        this.setLocation(url, query, true);
+    }
+    back() {
+        window.history.back();
+    }
+    removeListener() {
+        this.cb = undefined;
+    }
+    setListener(cb) {
+        this.cb = cb;
+    }
+    start(callback) {
+        this.setListener(callback);
+        this.historyCache = new Map();
+        if (this.options.mode === "hash") {
+            if (!this.hashchangebind)
+                this.hashchangebind = (e) => this.hashchange(e);
+            window.removeEventListener("hashchange", this.hashchangebind);
+            window.addEventListener("hashchange", this.hashchangebind, false);
+        }
+        else {
+            if (!this.popstatebind)
+                this.popstatebind = (e) => this.onLocationChange({ synthetic: false });
+            window.removeEventListener("popstate", this.popstatebind);
+            window.addEventListener("popstate", this.popstatebind, false);
+        }
+        const path = this.currentPathFromLocation();
+        const qs = this.currentQueryFromLocation();
+        if (this.defaultRoute) {
+            const defUrl = this.getUrlFromParams(this.defaultRoute.id);
+            const isEmpty = (this.options.mode === "hash" && (!window.location.hash || window.location.hash === "#" || window.location.hash === "#/")) ||
+                (this.options.mode === "history" && (path === "/" || path === ""));
+            if (isEmpty && defUrl) {
+                if (defUrl !== path)
+                    this.setLocation(defUrl, undefined, true);
+                this.onLocationChange({ synthetic: true });
+                return;
+            }
+        }
+        this.onLocationChange({ newURL: window.location.href, oldURL: "", query: qs ?? undefined });
+    }
+    async hashchange(event) {
+        if (this.suppressNextHashChange) {
+            this.suppressNextHashChange = false;
+            return;
+        }
+        const newUrlStr = event?.newURL || window.location.href;
+        const oldUrlStr = event?.oldURL || "";
+        await this.onLocationChange({ newURL: newUrlStr, oldURL: oldUrlStr });
+    }
+    async onLocationChange(ev) {
+        const path = this.currentPathFromLocation();
+        const query = ev.query ?? this.currentQueryFromLocation() ?? null;
+        this.options.mode === "history";
+        this.options.mode === "hash";
+        const base = this.options.base;
+        const prev = this.active;
+        let match = this.historyCache.get(path) || null;
+        if (!match) {
+            const res = await this.resolvePath(path, this.urls);
+            if (res) {
+                if (query)
+                    res.query = { ...query };
+                else
+                    delete res.query;
+                const redirectTo = res.redirect;
+                if (redirectTo) {
+                    this.setLocation(redirectTo, undefined, false);
+                    return;
+                }
+                if (this.beforeChange) {
+                    const ok = await this.beforeChange(prev ?? null, res);
+                    if (ok === false) {
+                        this.log("Navigation cancelled by beforeChange");
+                        if (this.options.mode === "history" && prev) {
+                            const prevUrl = base + prev.fullPath + this.buildQueryString(prev.query);
+                            window.history.replaceState({}, "", prevUrl);
+                            this.active = prev;
+                            return;
+                        }
+                        if (this.options.mode === "hash" && prev) {
+                            this.suppressNextHashChange = true;
+                            this.setLocation(prev.fullPath, prev.query, true);
+                        }
+                        return;
+                    }
+                }
+                const viewRoute = res;
+                this.active = viewRoute;
+                const cacheKey = viewRoute.fullPath;
+                this.historyCache.set(cacheKey, viewRoute);
+                try {
+                    this.cb?.("new", this.active, prev ?? null);
+                }
+                catch (e) {
+                    this.log("Callback error:", e);
+                }
+                if (this.afterChange) {
+                    try {
+                        await this.afterChange(prev ?? null, this.active);
+                    }
+                    catch (e) {
+                        this.log("afterChange error:", e);
+                    }
+                }
+                this.log("route new:", res);
+                return;
+            }
+            else {
+                this.active = null;
+                try {
+                    this.cb?.("notfound", null, prev ?? null);
+                }
+                catch (e) {
+                    this.log("Callback error:", e);
+                }
+                this.log("route notfound:", path);
+                return;
+            }
+        }
+        else {
+            if (query)
+                match.query = { ...query };
+            else
+                delete match.query;
+            const routeDef = this.ids.get(match.id);
+            const mw = await this.runMiddlewareChain(routeDef, match);
+            if (!mw.ok) {
+                const redirectTo = match.redirect || mw.redirect;
+                if (redirectTo) {
+                    this.setLocation(redirectTo, undefined, false);
+                    return;
+                }
+                this.active = null;
+                try {
+                    this.cb?.("notfound", null, prev ?? null);
+                }
+                catch (e) {
+                    this.log("Callback error:", e);
+                }
+                return;
+            }
+            if (this.beforeChange) {
+                const ok = await this.beforeChange(prev ?? null, match);
+                if (ok === false) {
+                    this.log("Navigation cancelled by beforeChange");
+                    if (this.options.mode === "history" && prev) {
+                        const prevUrl = base + prev.fullPath + this.buildQueryString(prev.query);
+                        window.history.replaceState({}, "", prevUrl);
+                        this.active = prev;
+                        return;
+                    }
+                    if (this.options.mode === "hash" && prev) {
+                        this.suppressNextHashChange = true;
+                        this.setLocation(prev.fullPath, prev.query, true);
+                    }
+                    return;
+                }
+            }
+            this.active = match;
+            try {
+                this.cb?.("history", this.active, prev ?? null);
+            }
+            catch (e) {
+                this.log("Callback error:", e);
+            }
+            if (this.afterChange) {
+                try {
+                    await this.afterChange(prev ?? null, this.active);
+                }
+                catch (e) {
+                    this.log("afterChange error:", e);
+                }
+            }
+            this.log("route history:", match);
+            return;
+        }
+    }
+    cleanHist(gurl) {
+        this.historyCache = new Map();
+        if (gurl) {
+            const full = this.buildUrlFromRouteChain(gurl);
+            this.active = {
+                id: gurl.id,
+                url: gurl.url,
+                fullPath: full,
+                params: {},
+                classRef: gurl.classRef,
+                default: !!gurl.default,
+                redirect: gurl.redirect,
+            };
+            this.historyCache.set(full, this.active);
+        }
+    }
+    removeHist(gurldel) {
+        let toRemove = null;
+        for (const [url, m] of this.historyCache) {
+            if (m.object === gurldel.obj) {
+                toRemove = url;
+                break;
+            }
+        }
+        if (toRemove)
+            this.historyCache.delete(toRemove);
+    }
+    getParams() {
+        return this.active?.params ?? {};
+    }
+    addGurl(gurl, parentId) {
+        if (this.ids.has(gurl.id))
+            throw Error(`${gurl.id} exits`);
+        let parent;
+        if (parentId) {
+            parent = this.ids.get(parentId);
+            if (!parent)
+                throw Error(`${parentId} not exits`);
+        }
+        this.compilePattern(gurl);
+        this.ids.set(gurl.id, gurl);
+        if (parent) {
+            gurl.parent = parent;
+            if (!parent.childs)
+                parent.childs = [];
+            parent.childs.push(gurl);
+        }
+        else {
+            this.urls.push(gurl);
+        }
+        if (gurl.childs && gurl.childs.length)
+            this.loadIds(gurl.childs, gurl);
+    }
+    destroy() {
+        if (this.hashchangebind)
+            window.removeEventListener("hashchange", this.hashchangebind);
+        if (this.popstatebind)
+            window.removeEventListener("popstate", this.popstatebind);
+        this.historyCache.clear();
+        this.cb = undefined;
+        this.active = null;
+    }
+    escapeRegExp(str) {
+        return this.escapeRegexLiteral(str);
+    }
+    tryGetUrlFromParams(id, params) {
+        try {
+            return this.getUrlFromParams(id, params);
+        }
+        catch {
+            return null;
+        }
+    }
+    getMatch() {
+        return this.active;
+    }
+    getAllRoutes() {
+        return [...this.ids.values()];
+    }
+    async matchPath(pathOrUrl) {
+        const [pathPart, queryPart] = pathOrUrl.split("?");
+        const norm = this.normalizePath(pathPart || "/");
+        const cached = this.historyCache.get(norm);
+        if (cached) {
+            if (queryPart) {
+                const q = this.parseQueryString(queryPart);
+                if (q)
+                    cached.query = q;
+                else
+                    delete cached.query;
+            }
+            return cached;
+        }
+        const match = await this.resolvePath(norm, this.urls);
+        if (!match)
+            return null;
+        const routeDef = this.ids.get(match.id);
+        const mw = await this.runMiddlewareChain(routeDef, match);
+        if (!mw.ok) {
+            if (mw.redirect)
+                return { ...match, redirect: mw.redirect };
+            return null;
+        }
+        if (queryPart) {
+            const q = this.parseQueryString(queryPart);
+            if (q)
+                match.query = q;
+            else
+                delete match.query;
+        }
+        return match;
+    }
+    getRouteChain(match) {
+        const r = match?.gurl ?? this.active?.gurl;
+        if (!r)
+            return [];
+        const chain = [];
+        let cur = r;
+        while (cur) {
+            chain.unshift(cur);
+            cur = cur.parent ?? null;
+        }
+        return chain;
+    }
+}
+
+class GEvents {
+    constructor() {
+        this.namespaces = new Map();
+    }
+    getNamespace(ns = "default") {
+        if (!this.namespaces.has(ns)) {
+            this.namespaces.set(ns, new Map());
+        }
+        return this.namespaces.get(ns);
+    }
+    addListener(event, handler, options = {}) {
+        if (event === "*" && !options.namespace) {
+            const global = this.getNamespace("__GLOBAL__");
+            const listeners = global.get(event) || [];
+            listeners.push({ handler, once: options.once, priority: options.priority ?? 0 });
+            listeners.sort((a, b) => (b.priority ?? 0) - (a.priority ?? 0));
+            global.set(event, listeners);
+            return handler;
+        }
+        const ns = this.getNamespace(options.namespace);
+        const listeners = ns.get(event) || [];
+        listeners.push({ handler, once: options.once, priority: options.priority ?? 0 });
+        listeners.sort((a, b) => (b.priority ?? 0) - (a.priority ?? 0));
+        ns.set(event, listeners);
+        return handler;
+    }
+    on(event, handler, options = {}) {
+        return this.addListener(event, handler, options);
+    }
+    once(event, handler, options = {}) {
+        return this.addListener(event, handler, { ...options, once: true });
+    }
+    subscribe(event, handler, options) {
+        this.on(event, handler, options);
+        return {
+            off: () => this.off(event, handler, options?.namespace)
+        };
+    }
+    off(event, handler, namespace = "default") {
+        const ns = this.getNamespace(namespace);
+        const handlers = ns.get(event);
+        if (!handlers)
+            return;
+        ns.set(event, handlers.filter(l => l.handler !== handler));
+    }
+    offAll(event, namespace = "default") {
+        if (event) {
+            this.getNamespace(namespace).delete(event);
+        }
+        else {
+            this.removeAllListeners(namespace);
+        }
+    }
+    async emit(event, payload, namespace = "default", options) {
+        const ns = this.getNamespace(namespace);
+        const handlers = ns.get(event);
+        const wildcardLocal = ns.get("*");
+        const globalWildcardListeners = this.namespaces.get("__GLOBAL__")?.get("*") ?? [];
+        const allHandlers = [
+            ...(handlers ?? []),
+            ...(wildcardLocal ?? []),
+            ...(globalWildcardListeners ?? []),
+        ];
+        if (allHandlers.length === 0)
+            return;
+        const runHandler = async (listener, isWildcard = false) => {
+            try {
+                if (isWildcard) {
+                    const handler = listener.handler;
+                    await handler({ event, payload, namespace });
+                }
+                else {
+                    const handler = listener.handler;
+                    await handler(payload);
+                }
+            }
+            catch (err) {
+                console.error(`[GEvents] Error en handler "${String(event)}" (${namespace}):`, err);
+            }
+            if (listener.once) {
+                const targetNs = (event === "*" && !namespace) ? "__GLOBAL__" : namespace;
+                this.off(event, listener.handler, targetNs);
+            }
+        };
+        const execute = async (listener) => {
+            const isWildcard = (wildcardLocal?.includes(listener) ?? false) ||
+                (globalWildcardListeners?.includes(listener) ?? false);
+            await runHandler(listener, isWildcard);
+        };
+        if (!options?.sequential) {
+            await Promise.all(allHandlers.map(execute));
+        }
+        else {
+            for (const l of allHandlers)
+                await execute(l);
+        }
+    }
+    waitFor(event, timeoutMs, namespace = "default") {
+        return new Promise((resolve, reject) => {
+            const handler = (payload) => {
+                clearTimeout(timer);
+                this.off(event, handler, namespace);
+                resolve(payload);
+            };
+            let timer;
+            if (timeoutMs) {
+                timer = setTimeout(() => {
+                    this.off(event, handler, namespace);
+                    reject(new Error(`Timeout esperando evento "${String(event)}" (${namespace})`));
+                }, timeoutMs);
+            }
+            this.on(event, handler, { namespace });
+        });
+    }
+    waitForComplete(event, timeoutMs, namespace = "default") {
+        return new Promise((resolve, reject) => {
+            let timer;
+            const handler = async (payload) => {
+                clearTimeout(timer);
+                const ns = this.getNamespace(namespace);
+                const handlers = ns.get(event);
+                if (handlers && handlers.length > 0) {
+                    try {
+                        await Promise.all(handlers.map(async (listener) => {
+                            try {
+                                await listener.handler(payload);
+                            }
+                            catch (err) {
+                                console.error(`[GEvents] Error en waitForComplete("${String(event)}"):`, err);
+                            }
+                        }));
+                    }
+                    catch (err) {
+                        console.error(`[GEvents] Error ejecutando handlers en waitForComplete("${String(event)}")`, err);
+                    }
+                }
+                this.off(event, handler, namespace);
+                resolve(payload);
+            };
+            if (timeoutMs) {
+                timer = setTimeout(() => {
+                    this.off(event, handler, namespace);
+                    reject(new Error(`Timeout esperando evento completo "${String(event)}" (${namespace})`));
+                }, timeoutMs);
+            }
+            this.on(event, handler, { namespace });
+        });
+    }
+    removeAllListeners(namespace) {
+        if (namespace) {
+            this.namespaces.delete(namespace);
+        }
+        else {
+            this.namespaces.clear();
+        }
+    }
+    count(ns) {
+        return [...ns.values()].reduce((acc, arr) => acc + (arr?.length ?? 0), 0);
+    }
+    listenerCount(namespace) {
+        if (namespace)
+            return this.count(this.namespaces.get(namespace) ?? new Map());
+        let total = 0;
+        for (const ns of this.namespaces.values())
+            total += this.count(ns);
+        return total;
+    }
+    listNamespaces() {
+        return [...this.namespaces.keys()];
+    }
+    hasListeners(event, namespace = "default") {
+        const ns = this.namespaces.get(namespace);
+        return !!ns?.get(event)?.length;
+    }
+    getListeners(event, namespace = "default") {
+        return [...(this.namespaces.get(namespace)?.get(event) ?? [])];
+    }
+}
+
+class GTplComponentBase {
+    onConstruct() { }
+    onInit() { }
+    onTemplateReady() { }
+    onConnect() { }
+    onDisconnect() { }
+    onDestroy() { }
+}
+
+const GBus = new GEvents();
+
+class AppGTplComponent extends GTplComponentBase {
+    onConstruct() {
+        GBus.on("urlChanged", ({ state, current, prev }) => this.onRouteChange(state, current, prev), { namespace: "router" });
+    }
+    onRouteChange(state, current, prev) {
+    }
+}
+
+class GRouterService {
+    static init(urls, opts) {
+        if (this._router)
+            return this._router;
+        this._router = new GRouter(urls, opts);
+        this._router.start((state, current, prev) => GBus.emit("urlChanged", { state, current, prev }, "router"));
+        return this._router;
+    }
+    static getRouter() {
+        return this._router;
+    }
+}
+
+export { Animations, AppGTplComponent, Component, Directive, GBus, GDirectiveBase, GEvents, GRouter, GRouterService, GTplComponentBase, GWatcher, getControllerFromComponent, getCtrl, getFlags, getGTPL, getGtplFromComponent, getMeta, getRegisteredComponent, isHostCreated };
+//# sourceMappingURL=gtplweb.esm.js.map

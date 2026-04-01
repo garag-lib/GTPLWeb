@@ -80,7 +80,7 @@ function initComponentHost(host: any, ControllerClass: any, baseMeta: ComponentM
     try { host[COMP_GTPL]?.destroy?.(); } catch (ex) { console.error(ex); }
     flags.firstRender = false;
     if (!useWebComponent)
-      host.innerHtml = '';
+      host.innerHTML = '';
     if (useWebComponent || host[HOST_CREATE])
       host.remove();
     host[COMP_GTPL] = null;
@@ -92,7 +92,7 @@ function initComponentHost(host: any, ControllerClass: any, baseMeta: ComponentM
   // --- 5. META por clase ---
   const ctor = useWebComponent ? host.constructor : ControllerClass.__gcomponent__;
   if (!Object.prototype.hasOwnProperty.call(ctor, CLASS_META)) {
-    defineHidden(ctor, CLASS_META, Object.freeze({ ...baseMeta }));
+    defineHidden(ctor, CLASS_META, { ...baseMeta });
   }
 
   const classMeta = getMeta(ctor);
@@ -171,7 +171,7 @@ export class GWatcher extends HTMLElement {
 
   disconnectedCallback() {
     if (this.ctrl) {
-      this.ctrl.onConnect?.(this);
+      this.ctrl.onDisconnect?.(this);
       return;
     }
     const host = this.parentNode as any;

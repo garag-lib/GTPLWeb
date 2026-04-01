@@ -45,6 +45,7 @@
   "scripts": {
     "clean": "rm -rf dist src-aot",
     "aot": "node tools/aot-prebuild.js",
+    "test": "npm run build:dev && node --test tests/*.test.mjs",
     "typecheck": "tsc --noEmit",
     "build": "npm run clean && npm run aot && rollup -c pro.rollup.config.mjs",
     "build:dev": "npm run clean && npm run aot && rollup -c rollup.config.mjs",
@@ -56,7 +57,7 @@
     "gtpl-aot": "tools/aot-prebuild.js"
   },
   "dependencies": {
-    "@mpeliz/gtpl": "^1.1.2",
+    "@mpeliz/gtpl": "github:garag-lib/GTPL",
     "tslib": "^2.8.1"
   },
   "devDependencies": {

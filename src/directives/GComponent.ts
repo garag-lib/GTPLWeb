@@ -14,7 +14,7 @@ export class GComponent extends GDirectiveBase {
         if (this.webc) {
             const prevCtrl: any = getControllerFromComponent(this.webc);
             prevCtrl?.destroy();
-            if (!this.regc.asWebComponent) {
+            if (!this.regc?.asWebComponent) {
                 if (isHostCreated(this.webc)) this.webc.remove();
                 else this.webc.setAttribute('g-component', '');
             }
@@ -24,21 +24,29 @@ export class GComponent extends GDirectiveBase {
     }
 
     private createComponent(tagName: string) {
+        const nextTag = String(tagName ?? '').trim();
 
-        if (this.value == tagName)
+        if (!nextTag) {
+            this.destroyComponent();
+            this.value = '';
+            this.ele.removeAttribute('g-component');
+            return;
+        }
+
+        if (this.value === nextTag && this.webc)
             return;
 
         this.destroyComponent();
 
-        const regc = getRegisteredComponent(this.value);
+        const regc = getRegisteredComponent(nextTag);
 
         if (!regc) {
-            console.warn(`[g-component] componente "${tagName}" no registrado`);
+            console.warn(`[g-component] componente "${nextTag}" no registrado`);
             return;
         }
 
-        this.value = tagName;
-        this.webc.setAttribute('g-component', this.value);
+        this.value = nextTag;
+        this.ele.setAttribute('g-component', this.value);
 
         this.ele.innerHTML = "";
 
@@ -59,10 +67,7 @@ export class GComponent extends GDirectiveBase {
     }
 
     setAttribute(name: string, value: any) {
-        if (this.value == value)
-            return;
-        this.destroyComponent();
-        this.createComponent(value);
+        this.createComponent(String(value ?? ''));
     }
 
     getAttribute(name: string): string | null {
@@ -72,6 +77,7 @@ export class GComponent extends GDirectiveBase {
     removeAttribute(name: string): void {
         this.destroyComponent();
         this.value = '';
+        this.ele.removeAttribute('g-component');
     }
 
 }
