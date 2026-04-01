@@ -17,7 +17,10 @@ export default [
       typescript({
         tsconfig: './tsconfig-aot.json',
         compilerOptions: {
-          experimentalDecorators: true
+          experimentalDecorators: true,
+          declaration: false,
+          emitDeclarationOnly: false,
+          sourceMap: true
         }
       }),
       copy({
