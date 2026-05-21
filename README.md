@@ -24,6 +24,268 @@ npm install @mpeliz/gtplweb
 
 `@mpeliz/gtpl` is installed automatically as a required dependency of `@mpeliz/gtplweb` (it is declared in package `dependencies`).
 
+## Start a New App
+
+Create a web-only app:
+
+```bash
+npx --package @mpeliz/gtplweb gtpl-init my-app
+cd my-app
+npm install
+npm run build:dev
+npm run server
+```
+
+Open `http://localhost:8080`.
+
+For local framework development before publishing to npm, point `npx` to this repository:
+
+```bash
+npx --package /home/manu/www/garag-lib/GTPLWeb gtpl-init my-app
+```
+
+Use development build while coding:
+
+```bash
+npm run build:dev
+```
+
+Use production build before publishing:
+
+```bash
+npm run build:prod
+```
+
+Minimal app structure:
+
+```text
+.
+├── package.json
+├── tsconfig.json
+├── src/
+│   ├── main.ts
+│   ├── App.ts
+│   ├── App.html
+│   └── App.scss
+└── www/
+    └── index.html
+```
+
+Recommended `package.json` scripts:
+
+```json
+{
+  "type": "module",
+  "scripts": {
+    "clean": "rm -rf src-aot www/dist",
+    "aot": "gtpl-aot",
+    "build:dev": "npm run clean && npm run aot && gtpl-app-build --dev",
+    "build:prod": "npm run clean && npm run aot && gtpl-app-build --prod",
+    "server": "php -S 0.0.0.0:8080 -t www"
+  },
+  "dependencies": {
+    "@mpeliz/gtplweb": "^1.0.0"
+  }
+}
+```
+
+This is a plain browser app. It needs only `@mpeliz/gtplweb`; `@mpeliz/gtpl` comes as a transitive framework dependency. Capacitor is not required.
+
+Minimal `tsconfig.json` for an app:
+
+```json
+{
+  "compilerOptions": {
+    "target": "ES2020",
+    "module": "ESNext",
+    "moduleResolution": "bundler",
+    "lib": ["DOM", "ES2020", "DOM.Iterable"],
+    "rootDir": "src",
+    "outDir": "www/dist",
+    "strict": true,
+    "esModuleInterop": true,
+    "skipLibCheck": true,
+    "experimentalDecorators": true,
+    "emitDecoratorMetadata": false,
+    "useDefineForClassFields": false
+  },
+  "include": ["src/**/*.ts"],
+  "exclude": ["node_modules", "src-aot", "www/dist"]
+}
+```
+
+Minimal `www/index.html`:
+
+```html
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>GTPLWeb App</title>
+  <link rel="stylesheet" href="./dist/global-styles.css" />
+  <script type="importmap">
+  {
+    "imports": {
+      "@mpeliz/gtpl": "./dist/gtpl.esm.js",
+      "@mpeliz/gtpl/": "./dist/gtpl.esm.js/",
+      "@mpeliz/gtplweb": "./dist/gtplweb.esm.js",
+      "@mpeliz/gtplweb/": "./dist/gtplweb.esm.js/",
+      "tslib": "./dist/tslib.es6.js"
+    }
+  }
+  </script>
+  <script type="module" src="./dist/main.js"></script>
+</head>
+<body>
+  <my-app></my-app>
+</body>
+</html>
+```
+
+After `npm run build:dev`, `gtpl-app-build` also writes `www/dist/importmap.json`. If your app adds dependencies, copy the generated mappings into the inline import map in `www/index.html`.
+
+Minimal `src/main.ts`:
+
+```ts
+import './App.js';
+```
+
+Minimal `src/App.ts`:
+
+```ts
+import { Component, GTplComponentBase } from '@mpeliz/gtplweb';
+
+@Component({
+  tag: 'my-app',
+  template: './App.html',
+  style: './App.scss',
+  styleMode: 'global'
+})
+export class App extends GTplComponentBase {
+  title = 'GTPLWeb App';
+}
+```
+
+Minimal `src/App.html`:
+
+```html
+<main>
+  <h1>{{ title }}</h1>
+</main>
+```
+
+Minimal `src/App.scss`:
+
+```scss
+body {
+  margin: 0;
+  font-family: system-ui, sans-serif;
+}
+```
+
+## Add Pages and Routing
+
+Create a page component:
+
+```text
+src/pages/Home.ts
+src/pages/Home.html
+src/pages/Home.scss
+```
+
+`src/pages/Home.ts`:
+
+```ts
+import { Component, GTplComponentBase } from '@mpeliz/gtplweb';
+
+@Component({
+  tag: 'home-page',
+  template: './Home.html',
+  style: './Home.scss',
+  styleMode: 'global'
+})
+export class Home extends GTplComponentBase {
+  counter = 0;
+
+  increment() {
+    this.counter++;
+  }
+}
+```
+
+`src/pages/Home.html`:
+
+```html
+<section>
+  <h2>Home</h2>
+  <button onclick="{{ increment }}">Clicks: {{ counter }}</button>
+</section>
+```
+
+Important GTPL syntax:
+- Text/value binding: `{{ counter }}`
+- Event binding: `onclick="{{ increment }}"` or `onclick="{{ this.counter++ }}"`
+- Do not use Angular syntax like `(click)="increment()"`.
+- Imports between TypeScript source files must use `.js` extension, for example `import { Home } from './pages/Home.js';`.
+
+Router setup in `src/main.ts`:
+
+```ts
+import './App.js';
+import { GRouterService } from '@mpeliz/gtplweb';
+import { Home } from './pages/Home.js';
+
+GRouterService.init([
+  { id: 'home', url: '/', default: true, classRef: Home.__gcomponent__ }
+]);
+```
+
+Root app for routed pages:
+
+```ts
+import { Animations, AppGTplComponent, Component, getControllerFromComponent } from '@mpeliz/gtplweb';
+
+@Component({
+  tag: 'my-app',
+  template: './App.html',
+  style: './App.scss',
+  styleMode: 'global'
+})
+export class App extends AppGTplComponent {
+  page?: HTMLElement;
+
+  async onRouteChange(_state: string, current: any) {
+    const Class = current.classRef;
+    const newPage = current.gurl.component ?? new Class();
+    current.gurl.component = newPage;
+
+    if (this.page !== newPage) {
+      this.page = newPage;
+      await Animations.fadeIn(this.page);
+      Animations.resetStyles(this.page);
+    }
+
+    const controller: any = getControllerFromComponent(this.page);
+    controller.action?.(current);
+  }
+}
+```
+
+Mount routed page in `src/App.html`:
+
+```html
+<header>
+  <a href="#/">Home</a>
+</header>
+
+<main>
+  <div g-is="page"></div>
+</main>
+```
+
+Important: use `g-is="page"` for an HTMLElement/component. Do not write `{{ page }}`, because that prints `[object HTMLElement]`.
+
 ## Public API
 
 Main exports:
@@ -241,15 +503,210 @@ CLI:
 npx gtpl-aot
 ```
 
+## App Build CLI (`gtpl-app-build`)
+
+`gtpl-app-build` packages a consumer app after AOT. It is web-first and has no Capacitor dependency. It also replaces project-local build scripts like the ones used in MovilTopo when an app later grows into Capacitor.
+
+Default behavior:
+- reads `src-aot/main.ts`
+- writes to `www/dist`
+- builds `vendor.js` from web dependencies, when the app has any
+- copies `@mpeliz/gtpl` and `@mpeliz/gtplweb` ESM files into `www/dist`
+- writes `www/dist/importmap.json`
+- copies generated `.html` / `.css`
+- copies `src/i18n/**/*.json` to `www/dist/i18n`
+
+Commands:
+
+```bash
+npx gtpl-aot
+npx gtpl-app-build --dev
+npx gtpl-app-build --prod
+```
+
+Create starter files:
+
+```bash
+npx --package @mpeliz/gtplweb gtpl-init my-app
+```
+
+Options:
+- `--dev`: modular output with sourcemaps.
+- `--prod`: bundled `main.js`, minified vendor, no sourcemaps.
+- `--src-dir src`: original source directory.
+- `--aot-dir src-aot`: AOT directory generated by `gtpl-aot`.
+- `--out-dir www/dist`: output directory.
+- `--public-out-dir ./dist`: public path used inside importmap.
+- `--entry src-aot/main.ts`: app entry.
+- `--vendor-file vendor.js`: vendor bundle filename.
+- `--i18n-dir src/i18n`: JSON translation source directory.
+- `--no-i18n`: skip i18n copy.
+- `--no-clean`: keep existing output files.
+
+Optional `package.json` config:
+
+```json
+{
+  "gtplweb": {
+    "srcDir": "src",
+    "aotDir": "src-aot",
+    "outDir": "www/dist",
+    "publicOutDir": "./dist",
+    "entry": "src-aot/main.ts",
+    "i18nDir": "src/i18n",
+    "vendorFile": "vendor.js",
+    "excludeVendorDependencies": ["@capacitor/android"],
+    "vendorExtraSpecifiers": {
+      "OrbitControls": {
+        "spec": "three/addons/controls/OrbitControls.js",
+        "kind": "named"
+      }
+    }
+  }
+}
+```
+
+Example with custom folders:
+
+```json
+{
+  "gtplweb": {
+    "srcDir": "app",
+    "aotDir": ".cache/gtpl-aot",
+    "outDir": "public/assets",
+    "publicOutDir": "./assets",
+    "entry": ".cache/gtpl-aot/main.ts",
+    "i18nDir": "translations"
+  }
+}
+```
+
+## Tools
+
+This package exposes three executable tools from `tools/`.
+
+### `gtpl-init`
+
+Creates a new web-only GTPLWeb app. Use it once when starting a project from zero.
+
+```bash
+npx --package @mpeliz/gtplweb gtpl-init my-app
+```
+
+It creates:
+- `package.json`
+- `tsconfig.json`
+- `www/index.html`
+- `src/main.ts`
+- `src/App.ts`
+- `src/App.html`
+- `src/App.scss`
+- `.gitignore`
+
+Local source file:
+- `tools/init-app.js`
+
+### `gtpl-aot`
+
+Runs the GTPLWeb AOT compiler. Use it before bundling.
+
+```bash
+npx gtpl-aot
+```
+
+It reads:
+- `src/**/*.ts` by default, or the directory configured with `--src-dir` / `gtplweb.srcDir`
+- component templates referenced by `template`
+- component styles referenced by `style`
+
+It writes:
+- `src-aot/` by default, or the directory configured with `--aot-dir` / `gtplweb.aotDir`
+- `global-styles.css` in the AOT directory when components use `styleMode: 'global'`
+- copies generated `.html` / `.css` into `tsconfig.compilerOptions.outDir`, `gtplweb.staticOutDir`, or `gtplweb.outDir`
+
+Options:
+- `--src-dir src`: original source directory.
+- `--aot-dir src-aot`: generated AOT directory.
+- `--tsconfig tsconfig.json`: TypeScript config used to discover `outDir`.
+- `--static-out-dir dist`: where generated static `.html` / `.css` are copied.
+- `--no-static-copy`: skip static file copy.
+
+Main purpose:
+- compiles GTPL templates ahead of time
+- compiles SCSS/SASS to CSS
+- injects compiled template/style metadata into generated component classes
+
+Local source file:
+- `tools/aot-prebuild.js`
+
+### `gtpl-app-build`
+
+Builds a consumer app after `gtpl-aot`. Use it for dev and prod browser output.
+
+```bash
+npx gtpl-app-build --dev
+npx gtpl-app-build --prod
+```
+
+It reads:
+- `src-aot/main.ts` by default, or the path configured with `--entry` / `gtplweb.entry`
+- `package.json`
+- optional `package.json#gtplweb` config
+
+It writes by default:
+- `www/dist/main.js`
+- `www/dist/importmap.json`
+- `www/dist/gtpl.esm.js`
+- `www/dist/gtplweb.esm.js`
+- `www/dist/tslib.es6.js`
+- `www/dist/vendor.js` only when the app has browser dependencies
+- copied generated `.html` / `.css`
+- copied `src/i18n/**/*.json` into `www/dist/i18n`
+
+Modes:
+- `--dev`: modular output with sourcemaps, easier debugging.
+- `--prod`: bundled/minified app output, no sourcemaps.
+
+Options:
+- `--src-dir src`
+- `--aot-dir src-aot`
+- `--out-dir www/dist`
+- `--public-out-dir ./dist`
+- `--entry src-aot/main.ts`
+- `--vendor-file vendor.js`
+- `--i18n-dir src/i18n`
+- `--no-i18n`
+- `--no-clean`
+
+Local source file:
+- `tools/app-build.js`
+
+Typical app scripts:
+
+```json
+{
+  "scripts": {
+    "clean": "rm -rf src-aot www/dist",
+    "aot": "gtpl-aot",
+    "build:dev": "npm run clean && npm run aot && gtpl-app-build --dev",
+    "build:prod": "npm run clean && npm run aot && gtpl-app-build --prod"
+  }
+}
+```
+
 ## Framework Scripts
 
-- `npm run clean`: clean `dist` and `src-aot`
-- `npm run aot`: run AOT only
-- `npm run typecheck`: TypeScript check without emit
-- `npm run build`: clean + aot + main build
-- `npm run build:dev`: modular build for debugging
-- `npm run build:prod`: production build
-- `npm run build:prod:bundle`: explicit production pipeline
+- Framework repository:
+  - `npm run clean`: clean `dist` and `src-aot`
+  - `npm run aot`: run AOT only
+  - `npm run typecheck`: TypeScript check without emit
+  - `npm run build`: clean + aot + main build
+  - `npm run build:dev`: modular build for debugging
+  - `npm run build:prod`: production build
+  - `npm run build:prod:bundle`: explicit production pipeline
+- Consumer app:
+  - `npm run build:dev`: `gtpl-aot` + `gtpl-app-build --dev`
+  - `npm run build:prod`: `gtpl-aot` + `gtpl-app-build --prod`
 
 ## Recommended App Pattern
 

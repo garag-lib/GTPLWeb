@@ -22,11 +22,64 @@ import * as sass from 'sass'
 // -----------------------------------------------------
 // 🧭 Inicialización de rutas
 // -----------------------------------------------------
-const SRC_DIR = path.resolve(process.cwd(), 'src');
-const OUT_DIR = path.resolve(process.cwd(), 'src-aot');
+const ROOT_DIR = process.cwd();
+const args = parseArgs(process.argv.slice(2));
+const config = readConfig();
+const SRC_DIR = path.resolve(ROOT_DIR, args.srcDir || config.srcDir || 'src');
+const OUT_DIR = path.resolve(ROOT_DIR, args.aotDir || args.outDir || config.aotDir || config.srcAotDir || 'src-aot');
+const TSCONFIG_PATH = path.resolve(ROOT_DIR, args.tsconfig || config.tsconfig || 'tsconfig.json');
+const STATIC_OUT_DIR = args.staticOutDir === false
+    ? null
+    : path.resolve(ROOT_DIR, args.staticOutDir || config.staticOutDir || config.outDir || readTsconfigOutDir() || 'dist');
+const IGNORE_PATTERNS = [
+    '**/node_modules/**',
+    '**/dist/**',
+    ...(config.aotIgnore || [])
+];
 
 let GTPL;
 let GLOBAL_STYLES = []; // 🧩 acumulador para styleMode: 'global'
+
+function parseArgs(argv) {
+    const parsed = {};
+    for (let i = 0; i < argv.length; i++) {
+        const arg = argv[i];
+        if (arg === '--src-dir') parsed.srcDir = argv[++i];
+        else if (arg.startsWith('--src-dir=')) parsed.srcDir = arg.slice('--src-dir='.length);
+        else if (arg === '--aot-dir' || arg === '--out-dir') parsed.aotDir = argv[++i];
+        else if (arg.startsWith('--aot-dir=')) parsed.aotDir = arg.slice('--aot-dir='.length);
+        else if (arg.startsWith('--out-dir=')) parsed.outDir = arg.slice('--out-dir='.length);
+        else if (arg === '--tsconfig') parsed.tsconfig = argv[++i];
+        else if (arg.startsWith('--tsconfig=')) parsed.tsconfig = arg.slice('--tsconfig='.length);
+        else if (arg === '--static-out-dir') parsed.staticOutDir = argv[++i];
+        else if (arg.startsWith('--static-out-dir=')) parsed.staticOutDir = arg.slice('--static-out-dir='.length);
+        else if (arg === '--no-static-copy') parsed.staticOutDir = false;
+    }
+    return parsed;
+}
+
+function readConfig() {
+    const pkgPath = path.join(ROOT_DIR, 'package.json');
+    if (!fs.existsSync(pkgPath)) return {};
+    const pkg = JSON.parse(fs.readFileSync(pkgPath, 'utf8'));
+    return pkg.gtplweb || {};
+}
+
+function readTsconfigOutDir() {
+    try {
+        if (!fs.existsSync(TSCONFIG_PATH)) return null;
+        const { config, error } = ts.readConfigFile(TSCONFIG_PATH, ts.sys.readFile);
+        if (error) return null;
+        const parsed = ts.parseJsonConfigFileContent(config, ts.sys, ROOT_DIR);
+        return parsed.options.outDir ? path.resolve(ROOT_DIR, parsed.options.outDir) : null;
+    } catch {
+        return null;
+    }
+}
+
+function toAotPath(srcPath) {
+    return path.join(OUT_DIR, path.relative(SRC_DIR, srcPath));
+}
 
 // -----------------------------------------------------
 // 🧱 1️⃣ Inicializar entorno DOM virtual
@@ -291,7 +344,7 @@ async function processFile(filePath) {
             compiledTemplate = await GTPL.jit.GCode(html);
             // 🚫 No borrar el template original en src
             // ✅ Pero sí borrar la copia en src-aot si existe
-            const aotTemplate = absTemplate.replace(SRC_DIR, OUT_DIR);
+            const aotTemplate = toAotPath(absTemplate);
             if (fs.existsSync(aotTemplate)) {
                 try {
                     fs.unlinkSync(aotTemplate);
@@ -339,7 +392,7 @@ async function processFile(filePath) {
             }
 
             if (['global', 'inline', ...temp].indexOf(info.styleMode) >= 0) {
-                const aotStyle = abs.replace(SRC_DIR, OUT_DIR);
+                const aotStyle = toAotPath(abs);
                 if (fs.existsSync(aotStyle)) {
                     try {
                         fs.unlinkSync(aotStyle);
@@ -407,7 +460,7 @@ async function processFile(filePath) {
     }
 
     // 🧱 Escribir el archivo en src-aot (nunca modificar src)
-    const destPath = filePath.replace(SRC_DIR, OUT_DIR);
+    const destPath = toAotPath(filePath);
     fs.mkdirSync(path.dirname(destPath), { recursive: true });
     fs.writeFileSync(destPath, modifiedCode, 'utf8');
     return true;
@@ -418,7 +471,7 @@ function emitCssFile(absInput, compiledCss) {
     const outPath = path.join(OUT_DIR, rel.replace(/\.(scss|sass)$/i, '.css'));
     fs.mkdirSync(path.dirname(outPath), { recursive: true });
     fs.writeFileSync(outPath, compiledCss, 'utf8');
-    return outPath.replace(OUT_DIR, '').replace(/\\/g, '/');
+        return path.relative(OUT_DIR, outPath).replace(/\\/g, '/');
 }
 
 // -----------------------------------------------------
@@ -442,10 +495,10 @@ async function main() {
     if (fs.existsSync(OUT_DIR)) fs.rmSync(OUT_DIR, { recursive: true, force: true });
     fs.mkdirSync(OUT_DIR, { recursive: true });
 
-    const entries = await glob(`${SRC_DIR}/**/*`, {
+    const entries = await glob(`${SRC_DIR.replace(/\\/g, '/')}/**/*`, {
         dot: true,
         nodir: false,
-        ignore: ['**/node_modules/**', '**/dist/**']
+        ignore: IGNORE_PATTERNS
     });
 
     let processed = 0, copied = 0, tsFiles = [];
@@ -494,33 +547,29 @@ async function main() {
     // 📦 Copiar CSS y HTML generados a outDir configurado
     // -----------------------------------------------------
 
-    let DIST_DIR;
     try {
-        const tsconfigPath = path.resolve(process.cwd(), 'tsconfig.json');
-        const { config, error } = ts.readConfigFile(tsconfigPath, ts.sys.readFile);
-        if (error) throw error;
-        const parsed = ts.parseJsonConfigFileContent(config, ts.sys, process.cwd());
-        DIST_DIR = path.resolve(process.cwd(), parsed.options.outDir || 'dist');
-
-        if (!fs.existsSync(DIST_DIR)) {
-            fs.mkdirSync(DIST_DIR, { recursive: true });
+        if (!STATIC_OUT_DIR) {
+            console.log('📤 Copia CSS/HTML omitida (--no-static-copy).');
+            return;
         }
 
-        const cssAndHtml = await glob(`${OUT_DIR}/**/*.{css,html}`, {
+        fs.mkdirSync(STATIC_OUT_DIR, { recursive: true });
+
+        const cssAndHtml = await glob(`${OUT_DIR.replace(/\\/g, '/')}/**/*.{css,html}`, {
             dot: false,
             nodir: true,
         });
 
         for (const file of cssAndHtml) {
             const rel = path.relative(OUT_DIR, file);
-            const dest = path.join(DIST_DIR, rel);
+            const dest = path.join(STATIC_OUT_DIR, rel);
             fs.mkdirSync(path.dirname(dest), { recursive: true });
             fs.copyFileSync(file, dest);
         }
 
-        console.log(`📤 Copiados ${cssAndHtml.length} archivos CSS/HTML → ${path.relative(process.cwd(), DIST_DIR)}`);
+        console.log(`📤 Copiados ${cssAndHtml.length} archivos CSS/HTML → ${path.relative(process.cwd(), STATIC_OUT_DIR)}`);
     } catch (e) {
-        console.warn('⚠️  No se pudo leer tsconfig.json, usando ./dist por defecto.');
+        console.warn(`⚠️  No se pudieron copiar CSS/HTML generados: ${e.message}`);
     }
 
 }
