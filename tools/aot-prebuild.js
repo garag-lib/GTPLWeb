@@ -143,11 +143,14 @@ function extractComponentInfo(filePath, code) {
                     let templateHtml = null;
                     let styleUrls = [];
                     let inlineStyles = [];
+                    let aot = true;
                     let styleMode = 'global'; // valor por defecto
                     if (arg && ts.isObjectLiteralExpression(arg)) {
                         for (const prop of arg.properties) {
                             const name = prop.name?.getText(source);
                             const value = prop.initializer;
+                            if (name === 'aot' && (value.kind === ts.SyntaxKind.TrueKeyword || value.kind === ts.SyntaxKind.FalseKeyword))
+                                aot = value.kind === ts.SyntaxKind.TrueKeyword;
                             if (name === 'styleMode' && ts.isStringLiteral(value))
                                 styleMode = value.text;
                             if ((name === 'template' || name === 'templateUrl') && ts.isStringLiteral(value)) {
@@ -186,6 +189,7 @@ function extractComponentInfo(filePath, code) {
                             templateHtml,
                             styleUrls,
                             inlineStyles,
+                            aot,
                             styleMode
                         });
                     }
@@ -332,6 +336,10 @@ async function processFile(filePath) {
 
     let modifiedCode = code;
     for (const info of components) {
+        if (info.aot === false) {
+            console.log(`↪️  AOT omitido por componente: ${path.relative(SRC_DIR, filePath)} (${info.className})`);
+            continue;
+        }
         console.log(`✨ Compilando componente: ${path.relative(SRC_DIR, filePath)} [styleMode=${info.styleMode}]`);
         //---
         const absTemplate = info.templatePath ? path.resolve(path.dirname(filePath), info.templatePath) : null;

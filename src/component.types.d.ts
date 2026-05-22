@@ -26,6 +26,7 @@ export interface ComponentConfig {
     template: string | { html: string };
     style?: string | string[];
     tag?: string;
+    aot?: boolean;
     styleMode?: 'inline' | 'file' | 'global' | 'lazy';
     shadow?: boolean | ShadowRootInit;
     asWebComponent?: boolean;
