@@ -7,7 +7,7 @@ import terser from '@rollup/plugin-terser';
 import copy from 'rollup-plugin-copy';
 
 const inputDir = fs.existsSync('./src-aot') ? './src-aot' : './src';
-const isProd = process.env.NODE_ENV === 'production';
+const isProd = true;
 
 console.log(`Compilando desde: ${inputDir} (${isProd ? 'PROD' : 'DEV'})`);
 
