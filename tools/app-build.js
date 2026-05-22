@@ -96,8 +96,8 @@ function parseArgs(argv) {
 }
 
 function validateMode(value) {
-  if (value === 'structured' || value === 'bundle') return;
-  throw new Error(`Invalid mode "${value}". Use --mode structured or --mode bundle.`);
+  if (value === 'structured' || value === 'bundle' || value === 'bundle-split') return;
+  throw new Error(`Invalid mode "${value}". Use --mode structured, --mode bundle or --mode bundle-split.`);
 }
 
 function readConfig() {
@@ -157,7 +157,7 @@ async function buildVendor(deps, importMap) {
     format: 'esm',
     outfile: vendorPath,
     platform: 'browser',
-    minify: mode === 'bundle',
+    minify: mode !== 'structured',
     sourcemap: mode === 'structured',
     logLevel: 'info',
     external: ['@mpeliz/gtpl', '@mpeliz/gtplweb']
@@ -218,6 +218,24 @@ async function buildApp(deps) {
       outfile: path.join(outDir, 'main.js'),
       format: 'esm',
       bundle: true,
+      minify: true,
+      sourcemap: false,
+      platform: 'browser',
+      target: 'es2020',
+      logLevel: 'info',
+      external: ['@mpeliz/gtpl', '@mpeliz/gtplweb', ...deps]
+    });
+    return;
+  }
+
+  if (mode === 'bundle-split') {
+    await build({
+      entryPoints: [entry],
+      outdir: outDir,
+      format: 'esm',
+      bundle: true,
+      splitting: true,
+      chunkNames: 'chunks/[name]-[hash]',
       minify: true,
       sourcemap: false,
       platform: 'browser',

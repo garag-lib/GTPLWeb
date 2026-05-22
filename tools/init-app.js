@@ -18,6 +18,7 @@ const files = new Map([
       aot: 'gtpl-aot',
       'build:structured': 'npm run clean && npm run aot && gtpl-app-build --mode structured',
       'build:bundle': 'npm run clean && npm run aot && gtpl-app-build --mode bundle',
+      'build:bundle-split': 'npm run clean && npm run aot && gtpl-app-build --mode bundle-split',
       server: 'php -S 0.0.0.0:8080 -t www'
     },
     gtplweb: {
@@ -295,6 +296,15 @@ Production build:
 npm run build:bundle
 \`\`\`
 
+## VS Code Tasks
+
+Use \`Terminal -> Run Task...\`:
+- \`GTPL: AOT\`
+- \`GTPL: Build Structured\`
+- \`GTPL: Build Bundle\`
+- \`GTPL: Build Bundle Split\`
+- \`GTPL: Server\`
+
 ## Default GTPLWeb Config
 
 This project keeps the default framework paths visible in \`package.json\`:
@@ -329,6 +339,45 @@ GTPL events use HTML event attributes:
 \`\`\`
 
 Do not use Angular syntax like \`(click)="..."\`.
+`],
+  ['.vscode/tasks.json', `{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "GTPL: AOT",
+      "type": "npm",
+      "script": "aot",
+      "group": "build"
+    },
+    {
+      "label": "GTPL: Build Structured",
+      "type": "npm",
+      "script": "build:structured",
+      "group": {
+        "kind": "build",
+        "isDefault": true
+      }
+    },
+    {
+      "label": "GTPL: Build Bundle",
+      "type": "npm",
+      "script": "build:bundle",
+      "group": "build"
+    },
+    {
+      "label": "GTPL: Build Bundle Split",
+      "type": "npm",
+      "script": "build:bundle-split",
+      "group": "build"
+    },
+    {
+      "label": "GTPL: Server",
+      "type": "npm",
+      "script": "server",
+      "isBackground": true
+    }
+  ]
+}
 `],
   ['.gitignore', `node_modules
 src-aot
