@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-APP_DIR="${1:-gtplweb-app}"
+APP_DIR="${1:-}"
 GTPLWEB_REPO="${GTPLWEB_REPO:-https://github.com/garag-lib/GTPLWeb.git}"
 GTPLWEB_REF="${GTPLWEB_REF:-main}"
 GTPLWEB_DEP="${GTPLWEB_DEP:-github:garag-lib/GTPLWeb}"
@@ -12,6 +12,17 @@ cleanup() {
   rm -rf "${TMP_DIR}"
 }
 trap cleanup EXIT
+
+if [ -z "${APP_DIR}" ]; then
+  echo "GTPLWeb project bootstrap (git-only)"
+  read -r -p "App name [gtplweb-app]: " APP_NAME
+  APP_NAME="${APP_NAME:-gtplweb-app}"
+
+  read -r -p "Target directory [./${APP_NAME}]: " TARGET_INPUT
+  TARGET_INPUT="${TARGET_INPUT:-./${APP_NAME}}"
+
+  APP_DIR="${TARGET_INPUT}"
+fi
 
 echo "Creating project in: ${APP_DIR}"
 mkdir -p "${APP_DIR}"

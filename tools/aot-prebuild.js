@@ -31,6 +31,7 @@ const TSCONFIG_PATH = path.resolve(ROOT_DIR, args.tsconfig || config.tsconfig ||
 const STATIC_OUT_DIR = args.staticOutDir === false
     ? null
     : path.resolve(ROOT_DIR, args.staticOutDir || config.staticOutDir || config.outDir || readTsconfigOutDir() || 'dist');
+const PUBLIC_OUT_DIR = normalizePublicOutDir(args.publicOutDir || config.publicOutDir || `./${path.basename(STATIC_OUT_DIR || 'dist')}`);
 const IGNORE_PATTERNS = [
     '**/node_modules/**',
     '**/dist/**',
@@ -53,6 +54,8 @@ function parseArgs(argv) {
         else if (arg.startsWith('--tsconfig=')) parsed.tsconfig = arg.slice('--tsconfig='.length);
         else if (arg === '--static-out-dir') parsed.staticOutDir = argv[++i];
         else if (arg.startsWith('--static-out-dir=')) parsed.staticOutDir = arg.slice('--static-out-dir='.length);
+        else if (arg === '--public-out-dir') parsed.publicOutDir = argv[++i];
+        else if (arg.startsWith('--public-out-dir=')) parsed.publicOutDir = arg.slice('--public-out-dir='.length);
         else if (arg === '--no-static-copy') parsed.staticOutDir = false;
     }
     return parsed;
@@ -79,6 +82,16 @@ function readTsconfigOutDir() {
 
 function toAotPath(srcPath) {
     return path.join(OUT_DIR, path.relative(SRC_DIR, srcPath));
+}
+
+function normalizePublicOutDir(value) {
+    const clean = String(value || './dist').replace(/\\/g, '/').replace(/\/+$/, '');
+    return clean.startsWith('./') || clean.startsWith('../') || clean.startsWith('/') ? clean : `./${clean}`;
+}
+
+function toPublicAssetPath(absAssetPath) {
+    const rel = path.relative(SRC_DIR, absAssetPath).replace(/\\/g, '/');
+    return `${PUBLIC_OUT_DIR}/${rel}`;
 }
 
 // -----------------------------------------------------
@@ -337,6 +350,16 @@ async function processFile(filePath) {
     let modifiedCode = code;
     for (const info of components) {
         if (info.aot === false) {
+            if (info.templatePath) {
+                const absTemplate = path.resolve(path.dirname(filePath), info.templatePath);
+                const runtimeTemplatePath = toPublicAssetPath(absTemplate);
+                modifiedCode = modifiedCode.replaceAll(info.templatePath, runtimeTemplatePath);
+            }
+            for (const stylePath of info.styleUrls || []) {
+                const absStyle = path.resolve(path.dirname(filePath), stylePath);
+                const runtimeStylePath = toPublicAssetPath(absStyle).replace(/\.(scss|sass)$/i, '.css');
+                modifiedCode = modifiedCode.replaceAll(stylePath, runtimeStylePath);
+            }
             console.log(`↪️  AOT omitido por componente: ${path.relative(SRC_DIR, filePath)} (${info.className})`);
             continue;
         }

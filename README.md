@@ -26,10 +26,16 @@ npm install @mpeliz/gtplweb
 
 ## Start a New App
 
-Create a web-only app with CLI:
+Git-only bootstrap (interactive):
 
 ```bash
-npx --package @mpeliz/gtplweb gtpl-init my-app
+curl -fsSL https://raw.githubusercontent.com/garag-lib/GTPLWeb/main/tools/init-project.sh | bash
+```
+
+Git-only bootstrap (non-interactive):
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/garag-lib/GTPLWeb/main/tools/init-project.sh | bash -s -- my-app
 cd my-app
 npm install
 npm run build:structured
@@ -38,29 +44,12 @@ npm run server
 
 Open `http://localhost:8080`.
 
-Create same app with `curl | sh` bootstrap:
-
-```bash
-curl -fsSL https://raw.githubusercontent.com/garag-lib/GTPLWeb/main/tools/init-project.sh | bash -s -- my-app
-```
-
-For local framework development before publishing to npm:
-
-```bash
-curl -fsSL https://raw.githubusercontent.com/garag-lib/GTPLWeb/main/tools/init-project.sh | GTPLWEB_PKG_SOURCE=/home/manu/www/garag-lib/GTPLWeb bash -s -- my-app
-```
-
-For local framework development before publishing to npm, point `npx` to this repository:
-
-```bash
-npx --package /home/manu/www/garag-lib/GTPLWeb gtpl-init my-app
-```
-
 Starter includes:
 - hash routes configured in `src/main.ts`
 - `Home` page
 - `About` page with reactive counter
 - `Lazy` page loaded by dynamic `import()`
+- `Runtime` page with `template: './RuntimePage.html'` and `aot: false` (runtime fetch, no template precompile)
 - generic build pipeline: `gtpl-aot` -> `gtpl-app-build`
 
 Use development build while coding:
@@ -546,7 +535,7 @@ npx gtpl-app-build --mode bundle
 Create starter files:
 
 ```bash
-npx --package @mpeliz/gtplweb gtpl-init my-app
+curl -fsSL https://raw.githubusercontent.com/garag-lib/GTPLWeb/main/tools/init-project.sh | bash
 ```
 
 Options:
@@ -609,7 +598,7 @@ This package exposes three executable tools from `tools/`.
 Creates a new web-only GTPLWeb app. Use it once when starting a project from zero.
 
 ```bash
-npx --package @mpeliz/gtplweb gtpl-init my-app
+node tools/init-app.js my-app
 ```
 
 It creates:
@@ -648,11 +637,13 @@ Options:
 - `--aot-dir src-aot`: generated AOT directory.
 - `--tsconfig tsconfig.json`: TypeScript config used to discover `outDir`.
 - `--static-out-dir dist`: where generated static `.html` / `.css` are copied.
+- `--public-out-dir ./dist`: public base path used to rewrite runtime asset URLs for `aot: false`.
 - `--no-static-copy`: skip static file copy.
 
 Main purpose:
 - compiles GTPL templates ahead of time
 - compiles SCSS/SASS to CSS
+- supports per-component opt-out with `aot: false` (keeps template/style runtime-loaded)
 - injects compiled template/style metadata into generated component classes
 
 Local source file:
@@ -719,10 +710,8 @@ Typical app scripts:
   - `npm run clean`: clean `dist` and `src-aot`
   - `npm run aot`: run AOT only
   - `npm run typecheck`: TypeScript check without emit
-  - `npm run build`: clean + aot + main build
   - `npm run build:structured`: modular build for debugging
   - `npm run build:bundle`: production build
-  - `npm run build:bundle`: explicit production pipeline
 - Consumer app:
   - `npm run build:structured`: `gtpl-aot` + `gtpl-app-build --mode structured`
   - `npm run build:bundle`: `gtpl-aot` + `gtpl-app-build --mode bundle`
