@@ -2,7 +2,6 @@ import GTPL from '@mpeliz/gtpl';
 import { ComponentMeta, HostElement } from '../component.types';
 
 // ---- 
-
 /*
 const __globalStyleIds = new Set<string>();
 */
@@ -94,7 +93,11 @@ export async function ensureCompiledTemplate(classMeta: ComponentMeta): Promise<
     if (classMeta.compilePromise) { await classMeta.compilePromise; return; }
     classMeta.compilePromise = (async () => {
         try {
-            const html = classMeta.templateHtml ?? (await (await fetch(classMeta.templateUrl!)).text());
+            let html = classMeta.templateHtml ?? null;
+            if (html == null) {
+                const response = await fetch(classMeta.templateUrl!);
+                html = await response.text();
+            }
             const compiled = (GTPL as any).jit.GCode(html);
             classMeta.templateFactory = (GTPL as any).jit.GCompile(compiled);
         } catch (err) {

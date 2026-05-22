@@ -111,10 +111,19 @@ function initComponentHost(host: any, ControllerClass: any, baseMeta: ComponentM
   }
 
   // --- 7. Template (AOT + async JIT) ---
+  const mountTemplateIfReady = () => {
+    if (!flags.firstRender) return;
+    if (!host[COMP_GTPL]) return;
+    flags.firstRender = false;
+    host[COMP_GTPL].addTo(host.$host);
+    ctrl.onTemplateReady?.();
+  };
+
   const loadTemplate = () => {
     const gtpl = instantiateTemplate(ctrl, classMeta.templateFactory);
     defineHidden(host, COMP_GTPL, gtpl, { writable: true });
     ctrl.onInit?.();
+    mountTemplateIfReady();
   };
 
   if (classMeta.templateFactory) {
@@ -134,9 +143,7 @@ function initComponentHost(host: any, ControllerClass: any, baseMeta: ComponentM
       }
     }
     if (flags.firstRender) {
-      flags.firstRender = false;
-      host[COMP_GTPL]?.addTo(host.$host);
-      ctrl.onTemplateReady?.();
+      mountTemplateIfReady();
     }
   };
 
