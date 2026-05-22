@@ -16,8 +16,8 @@ const files = new Map([
     scripts: {
       clean: 'rm -rf src-aot www/dist',
       aot: 'gtpl-aot',
-      'build:dev': 'npm run clean && npm run aot && gtpl-app-build --dev',
-      'build:prod': 'npm run clean && npm run aot && gtpl-app-build --prod',
+      'build:structured': 'npm run clean && npm run aot && gtpl-app-build --mode structured',
+      'build:bundle': 'npm run clean && npm run aot && gtpl-app-build --mode bundle',
       server: 'php -S 0.0.0.0:8080 -t www'
     },
     gtplweb: {
@@ -76,8 +76,33 @@ const files = new Map([
 </html>
 `],
   ['src/main.ts', `import './App.js';
+import { GRouterService } from '@mpeliz/gtplweb';
+import { HomePage } from './pages/HomePage.js';
+import { AboutPage } from './pages/AboutPage.js';
+
+GRouterService.init([
+  {
+    id: 'home',
+    url: '/',
+    default: true,
+    classRef: HomePage.__gcomponent__
+  },
+  {
+    id: 'about',
+    url: '/about',
+    classRef: AboutPage.__gcomponent__
+  },
+  {
+    id: 'lazy',
+    url: '/lazy',
+    classRef: async () => {
+      const mod = await import('./pages/LazyPage.js');
+      return mod.LazyPage.__gcomponent__;
+    }
+  }
+]);
 `],
-  ['src/App.ts', `import { Component, GTplComponentBase } from '@mpeliz/gtplweb';
+  ['src/App.ts', `import { AppGTplComponent, Component } from '@mpeliz/gtplweb';
 
 @Component({
   tag: '${tagName}',
@@ -85,21 +110,139 @@ const files = new Map([
   style: './App.scss',
   styleMode: 'global'
 })
-export class App extends GTplComponentBase {
-  title = '${appName}';
+export class App extends AppGTplComponent {
+  page = null;
+
+  async onRouteChange(state, current) {
+    const isChildRoute = !current.classRef;
+    const ref = isChildRoute ? current.gurl.parent?.classRef : current.classRef;
+    if (!ref) return;
+
+    let componentFactory = ref;
+    if (typeof ref === 'function' && !ref.prototype) {
+      componentFactory = await ref();
+    }
+
+    const existingComponent = isChildRoute ? current.gurl.parent?.component : current.gurl.component;
+    if (state === 'new' && !existingComponent) {
+      const instance = new componentFactory();
+      if (isChildRoute) {
+        current.gurl.parent.component = instance;
+      } else {
+        current.gurl.component = instance;
+      }
+    }
+    this.page = isChildRoute ? current.gurl.parent?.component : current.gurl.component;
+  }
 }
 `],
-  ['src/App.html', `<main>
-  <h1>{{ title }}</h1>
+  ['src/App.html', `<main class="app-shell">
+  <header>
+    <h1>${appName}</h1>
+    <nav>
+      <a href="#/">Home</a>
+      <a href="#/about">About</a>
+      <a href="#/lazy">Lazy</a>
+    </nav>
+  </header>
+  <section class="page">
+    <div g-is="page"></div>
+  </section>
 </main>
 `],
   ['src/App.scss', `body {
   margin: 0;
-  font-family: system-ui, sans-serif;
+  font-family: Arial, sans-serif;
 }
 
-main {
-  padding: 2rem;
+.app-shell {
+  padding: 1.5rem;
+}
+
+header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+
+nav {
+  display: flex;
+  gap: 0.75rem;
+}
+
+nav a {
+  color: #0a66c2;
+  text-decoration: none;
+  font-weight: bold;
+}
+
+.page {
+  margin-top: 1rem;
+  padding: 1rem;
+  border: 1px solid #ddd;
+  border-radius: 8px;
+}
+`],
+  ['src/pages/HomePage.ts', `import { Component, GTplComponentBase } from '@mpeliz/gtplweb';
+
+@Component({
+  tag: 'home-page',
+  template: './HomePage.html',
+  style: './HomePage.scss',
+  styleMode: 'global'
+})
+export class HomePage extends GTplComponentBase {
+}
+`],
+  ['src/pages/HomePage.html', `<h2>Home</h2>
+<p>Starter listo con enrutado GTPLWeb.</p>
+`],
+  ['src/pages/HomePage.scss', `h2 {
+  margin-top: 0;
+}
+`],
+  ['src/pages/AboutPage.ts', `import { Component, GTplComponentBase } from '@mpeliz/gtplweb';
+
+@Component({
+  tag: 'about-page',
+  template: './AboutPage.html',
+  style: './AboutPage.scss',
+  styleMode: 'global'
+})
+export class AboutPage extends GTplComponentBase {
+  clicks = 0;
+
+  increment() {
+    this.clicks++;
+  }
+}
+`],
+  ['src/pages/AboutPage.html', `<h2>About</h2>
+<p>Reactividad simple:</p>
+<button onclick="{{ increment }}">Clicks: {{ clicks }}</button>
+`],
+  ['src/pages/AboutPage.scss', `button {
+  padding: 0.5rem 0.75rem;
+}
+`],
+  ['src/pages/LazyPage.ts', `import { Component, GTplComponentBase } from '@mpeliz/gtplweb';
+
+@Component({
+  tag: 'lazy-page',
+  template: './LazyPage.html',
+  style: './LazyPage.scss',
+  styleMode: 'global'
+})
+export class LazyPage extends GTplComponentBase {
+}
+`],
+  ['src/pages/LazyPage.html', `<h2>Lazy</h2>
+<p>Esta vista se carga por import dinámico al navegar.</p>
+`],
+  ['src/pages/LazyPage.scss', `h2 {
+  margin-top: 0;
 }
 `],
   ['README.md', `# ${appName}
@@ -110,14 +253,14 @@ GTPLWeb app generated with \`gtpl-init\`.
 
 \`\`\`bash
 npm install
-npm run build:dev
+npm run build:structured
 npm run server
 \`\`\`
 
 Production build:
 
 \`\`\`bash
-npm run build:prod
+npm run build:bundle
 \`\`\`
 
 ## Default GTPLWeb Config
@@ -175,7 +318,7 @@ for (const [relPath, content] of files) {
 
 console.log(`GTPLWeb app created in ${path.relative(process.cwd(), targetDir) || '.'}`);
 console.log('Config visible in package.json#gtplweb and README.md');
-console.log('Next: npm install && npm run build:dev && npm run server');
+console.log('Next: npm install && npm run build:structured && npm run server');
 
 function normalizePackageName(name) {
   return name

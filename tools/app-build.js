@@ -11,7 +11,7 @@ const require = createRequire(import.meta.url);
 const packageRoot = path.resolve(path.dirname(new URL(import.meta.url).pathname), '..');
 
 const args = parseArgs(process.argv.slice(2));
-const mode = args.mode || (args.prod ? 'prod' : 'dev');
+const mode = args.mode || 'structured';
 const config = readConfig();
 const outDir = path.resolve(rootDir, args.outDir || config.outDir || 'www/dist');
 const srcAotDir = path.resolve(rootDir, args.srcAotDir || args.aotDir || config.aotDir || config.srcAotDir || 'src-aot');
@@ -47,6 +47,7 @@ const vendorExtraSpecifiers = {
 await main();
 
 async function main() {
+  validateMode(mode);
   ensureAotInput();
   cleanOutDir();
 
@@ -71,9 +72,7 @@ function parseArgs(argv) {
   const parsed = {};
   for (let i = 0; i < argv.length; i++) {
     const arg = argv[i];
-    if (arg === '--prod') parsed.prod = true;
-    else if (arg === '--dev') parsed.mode = 'dev';
-    else if (arg === '--mode') parsed.mode = argv[++i];
+    if (arg === '--mode') parsed.mode = argv[++i];
     else if (arg.startsWith('--mode=')) parsed.mode = arg.slice('--mode='.length);
     else if (arg === '--out-dir') parsed.outDir = argv[++i];
     else if (arg.startsWith('--out-dir=')) parsed.outDir = arg.slice('--out-dir='.length);
@@ -94,6 +93,11 @@ function parseArgs(argv) {
     else if (arg === '--no-clean') parsed.clean = false;
   }
   return parsed;
+}
+
+function validateMode(value) {
+  if (value === 'structured' || value === 'bundle') return;
+  throw new Error(`Invalid mode "${value}". Use --mode structured or --mode bundle.`);
 }
 
 function readConfig() {
@@ -153,8 +157,8 @@ async function buildVendor(deps, importMap) {
     format: 'esm',
     outfile: vendorPath,
     platform: 'browser',
-    minify: mode === 'prod',
-    sourcemap: mode !== 'prod',
+    minify: mode === 'bundle',
+    sourcemap: mode === 'structured',
     logLevel: 'info',
     external: ['@mpeliz/gtpl', '@mpeliz/gtplweb']
   });
@@ -208,7 +212,7 @@ function copyPackageFile(pkgName, relFile, fileName, importMap, required = false
 }
 
 async function buildApp(deps) {
-  if (mode === 'prod') {
+  if (mode === 'bundle') {
     await build({
       entryPoints: [entry],
       outfile: path.join(outDir, 'main.js'),
