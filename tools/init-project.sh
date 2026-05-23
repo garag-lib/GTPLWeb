@@ -18,17 +18,22 @@ prompt() {
   local default_value="${2:-}"
   local answer=""
   local tty="/dev/tty"
-  if [ ! -r "${tty}" ]; then
+  if [ ! -t 2 ] || [ ! -r "${tty}" ] || [ ! -w "${tty}" ]; then
     echo "${default_value}"
     return
   fi
-  if read -r -p "${message} [${default_value}]: " answer < "${tty}" 2>/dev/null; then
+  exec 3<> "${tty}"
+  printf "%s [%s]: " "${message}" "${default_value}" >&3
+  if IFS= read -r answer <&3 2>/dev/null; then
     if [ -n "${answer}" ]; then
+      exec 3>&-
       echo "${answer}"
     else
+      exec 3>&-
       echo "${default_value}"
     fi
   else
+    exec 3>&-
     echo "${default_value}"
   fi
 }
