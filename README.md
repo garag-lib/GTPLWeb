@@ -44,13 +44,13 @@ Open `http://localhost:8080`.
 Alternative bootstrap (git script):
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/garag-lib/GTPLWeb/main/tools/init-project.sh | bash
+curl -fsSL "https://raw.githubusercontent.com/garag-lib/GTPLWeb/main/tools/init-project.sh?v=$(date +%s)" | bash
 ```
 
 Or direct target dir:
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/garag-lib/GTPLWeb/main/tools/init-project.sh | bash -s -- my-app
+curl -fsSL "https://raw.githubusercontent.com/garag-lib/GTPLWeb/main/tools/init-project.sh?v=$(date +%s)" | bash -s -- my-app
 ```
 
 Bootstrap prompts:
