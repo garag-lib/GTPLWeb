@@ -13,28 +13,41 @@ cleanup() {
 }
 trap cleanup EXIT
 
+prompt() {
+  local message="$1"
+  local default_value="${2:-}"
+  local answer=""
+  local tty="/dev/tty"
+  if [ ! -r "${tty}" ]; then
+    echo "${default_value}"
+    return
+  fi
+  if read -r -p "${message} [${default_value}]: " answer < "${tty}" 2>/dev/null; then
+    if [ -n "${answer}" ]; then
+      echo "${answer}"
+    else
+      echo "${default_value}"
+    fi
+  else
+    echo "${default_value}"
+  fi
+}
+
 if [ -z "${APP_DIR}" ]; then
   echo "GTPLWeb project bootstrap (git-only)"
-  read -r -p "App name [gtplweb-app]: " APP_NAME
-  APP_NAME="${APP_NAME:-gtplweb-app}"
-
-  read -r -p "Target directory [./${APP_NAME}]: " TARGET_INPUT
-  TARGET_INPUT="${TARGET_INPUT:-./${APP_NAME}}"
+  APP_NAME="$(prompt "App name" "gtplweb-app")"
+  TARGET_INPUT="$(prompt "Target directory" "./${APP_NAME}")"
 
   APP_DIR="${TARGET_INPUT}"
 fi
 
-APP_BASENAME="$(basename "${APP_DIR}")"
+APP_BASENAME="$(basename "${APP_DIR:-gtplweb-app}")"
 DEFAULT_YEAR="$(date +%Y)"
-read -r -p "Description [GTPLWeb app: ${APP_BASENAME}]: " APP_DESCRIPTION
-APP_DESCRIPTION="${APP_DESCRIPTION:-GTPLWeb app: ${APP_BASENAME}}"
-read -r -p "Author []: " APP_AUTHOR
-read -r -p "License [MIT]: " APP_LICENSE
-APP_LICENSE="${APP_LICENSE:-MIT}"
-read -r -p "Copyright holder [${APP_AUTHOR}]: " APP_COPYRIGHT_HOLDER
-APP_COPYRIGHT_HOLDER="${APP_COPYRIGHT_HOLDER:-${APP_AUTHOR}}"
-read -r -p "Copyright year [${DEFAULT_YEAR}]: " APP_COPYRIGHT_YEAR
-APP_COPYRIGHT_YEAR="${APP_COPYRIGHT_YEAR:-${DEFAULT_YEAR}}"
+APP_DESCRIPTION="$(prompt "Description" "GTPLWeb app: ${APP_BASENAME}")"
+APP_AUTHOR="$(prompt "Author" "")"
+APP_LICENSE="$(prompt "License" "MIT")"
+APP_COPYRIGHT_HOLDER="$(prompt "Copyright holder" "${APP_AUTHOR}")"
+APP_COPYRIGHT_YEAR="$(prompt "Copyright year" "${DEFAULT_YEAR}")"
 
 echo "Creating project in: ${APP_DIR}"
 mkdir -p "${APP_DIR}"

@@ -53,6 +53,17 @@ Or direct target dir:
 curl -fsSL https://raw.githubusercontent.com/garag-lib/GTPLWeb/main/tools/init-project.sh | bash -s -- my-app
 ```
 
+Bootstrap prompts:
+- App name
+- Target directory
+- Description
+- Author
+- License
+- Copyright holder
+- Copyright year
+
+When stdin is piped (like `curl | bash`), prompts are read from terminal (`/dev/tty`). If no TTY is available, defaults are used.
+
 ## App Build Flow
 
 1. Write app code in `src/`
