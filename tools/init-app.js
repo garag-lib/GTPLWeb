@@ -16,7 +16,7 @@ const files = new Map([
     scripts: {
       clean: 'rm -rf src-aot www/dist',
       aot: 'gtpl-aot',
-      'build:structured': 'npm run clean && npm run aot && gtpl-app-build --mode structured',
+      'build:dev': 'npm run clean && npm run aot && gtpl-app-build --mode dev',
       'build:bundle': 'npm run clean && npm run aot && gtpl-app-build --mode bundle',
       'build:bundle-split': 'npm run clean && npm run aot && gtpl-app-build --mode bundle-split',
       server: 'php -S 0.0.0.0:8080 -t www'
@@ -25,7 +25,6 @@ const files = new Map([
       srcDir: 'src',
       aotDir: 'src-aot',
       outDir: 'www/dist',
-      publicOutDir: './dist',
       entry: 'src-aot/main.ts',
       i18nDir: 'src/i18n'
     },
@@ -58,17 +57,6 @@ const files = new Map([
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>${appName}</title>
   <link rel="stylesheet" href="./dist/global-styles.css" />
-  <script type="importmap">
-  {
-    "imports": {
-      "@mpeliz/gtpl": "./dist/gtpl.esm.js",
-      "@mpeliz/gtpl/": "./dist/gtpl.esm.js/",
-      "@mpeliz/gtplweb": "./dist/gtplweb.esm.js",
-      "@mpeliz/gtplweb/": "./dist/gtplweb.esm.js/",
-      "tslib": "./dist/tslib.es6.js"
-    }
-  }
-  </script>
   <script type="module" src="./dist/main.js"></script>
 </head>
 <body>
@@ -286,7 +274,7 @@ GTPLWeb app generated with \`gtpl-init\`.
 
 \`\`\`bash
 npm install
-npm run build:structured
+npm run build:dev
 npm run server
 \`\`\`
 
@@ -300,7 +288,7 @@ npm run build:bundle
 
 Use \`Terminal -> Run Task...\`:
 - \`GTPL: AOT\`
-- \`GTPL: Build Structured\`
+- \`GTPL: Build Dev\`
 - \`GTPL: Build Bundle\`
 - \`GTPL: Build Bundle Split\`
 - \`GTPL: Server\`
@@ -315,7 +303,6 @@ This project keeps the default framework paths visible in \`package.json\`:
     "srcDir": "src",
     "aotDir": "src-aot",
     "outDir": "www/dist",
-    "publicOutDir": "./dist",
     "entry": "src-aot/main.ts",
     "i18nDir": "src/i18n"
   }
@@ -326,7 +313,6 @@ Meaning:
 - \`srcDir\`: source TypeScript/components directory.
 - \`aotDir\`: generated AOT directory.
 - \`outDir\`: browser build output directory.
-- \`publicOutDir\`: path used inside import maps from \`www/index.html\`.
 - \`entry\`: app entry after AOT.
 - \`i18nDir\`: optional JSON translations directory.
 
@@ -350,9 +336,9 @@ Do not use Angular syntax like \`(click)="..."\`.
       "group": "build"
     },
     {
-      "label": "GTPL: Build Structured",
+      "label": "GTPL: Build Dev",
       "type": "npm",
-      "script": "build:structured",
+      "script": "build:dev",
       "group": {
         "kind": "build",
         "isDefault": true
@@ -399,7 +385,7 @@ for (const [relPath, content] of files) {
 
 console.log(`GTPLWeb app created in ${path.relative(process.cwd(), targetDir) || '.'}`);
 console.log('Config visible in package.json#gtplweb and README.md');
-console.log('Next: npm install && npm run build:structured && npm run server');
+console.log('Next: npm install && npm run build:dev && npm run server');
 
 function normalizePackageName(name) {
   return name

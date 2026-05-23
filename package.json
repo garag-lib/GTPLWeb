@@ -40,9 +40,9 @@
   "exports": {
     "./package.json": "./package.json",
     ".": {
+      "types": "./dist/index.d.ts",
       "import": "./dist/gtplweb.esm.js",
-      "require": "./dist/gtplweb.cjs.js",
-      "types": "./dist/index.d.ts"
+      "require": "./dist/gtplweb.cjs.js"
     }
   },
   "scripts": {

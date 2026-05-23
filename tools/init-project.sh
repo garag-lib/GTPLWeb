@@ -53,6 +53,6 @@ Done.
 Next:
   cd ${APP_DIR}
   npm install
-  npm run build:structured
+  npm run build:bundle-split
   npm run server
 TXT
