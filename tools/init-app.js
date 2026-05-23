@@ -2,16 +2,27 @@
 
 import fs from 'fs';
 import path from 'path';
+import readline from 'readline/promises';
+import { stdin as input, stdout as output } from 'process';
 
-const targetDir = path.resolve(process.cwd(), process.argv[2] || '.');
-const appName = normalizePackageName(path.basename(targetDir) || 'gtplweb-app');
+const cli = parseArgs(process.argv.slice(2));
+const targetDir = path.resolve(process.cwd(), cli.targetDir || '.');
+const defaultDisplayName = path.basename(targetDir) || 'gtplweb-app';
+const metadata = await resolveMetadata(defaultDisplayName, cli);
+const appName = metadata.packageName;
+const appDisplayName = metadata.displayName;
 const tagName = `${appName.replace(/[^a-z0-9]+/g, '-')}-app`.replace(/^-+|-+$/g, '') || 'gtplweb-app';
+const copyrightLine = buildCopyrightLine(metadata);
 
 const files = new Map([
   ['package.json', JSON.stringify({
     name: appName,
     version: '0.1.0',
     private: true,
+    description: metadata.description,
+    author: metadata.author || undefined,
+    license: metadata.license,
+    copyright: copyrightLine || undefined,
     type: 'module',
     scripts: {
       clean: 'rm -rf src-aot www/dist',
@@ -55,7 +66,7 @@ const files = new Map([
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>${appName}</title>
+  <title>${appDisplayName}</title>
   <link rel="stylesheet" href="./dist/global-styles.css" />
   <script type="module" src="./dist/main.js"></script>
 </head>
@@ -133,7 +144,7 @@ export class App extends AppGTplComponent {
 `],
   ['src/App.html', `<main class="app-shell">
   <header>
-    <h1>${appName}</h1>
+    <h1>${appDisplayName}</h1>
     <nav>
       <a href="#/">Home</a>
       <a href="#/about">About</a>
@@ -266,9 +277,11 @@ export class RuntimePage extends GTplComponentBase {
   padding: 0.5rem 0.75rem;
 }
 `],
-  ['README.md', `# ${appName}
+  ['README.md', `# ${appDisplayName}
 
 GTPLWeb app generated with \`gtpl-init\`.
+
+${metadata.description ? `Description: ${metadata.description}\n` : ''}${metadata.author ? `Author: ${metadata.author}\n` : ''}License: ${metadata.license}${copyrightLine ? `\nCopyright: ${copyrightLine}` : ''}
 
 ## Commands
 
@@ -386,6 +399,97 @@ for (const [relPath, content] of files) {
 console.log(`GTPLWeb app created in ${path.relative(process.cwd(), targetDir) || '.'}`);
 console.log('Config visible in package.json#gtplweb and README.md');
 console.log('Next: npm install && npm run build:dev && npm run server');
+
+function parseArgs(argv) {
+  const parsed = {
+    targetDir: null,
+    yes: false
+  };
+
+  for (let i = 0; i < argv.length; i++) {
+    const arg = argv[i];
+    if (arg === '--yes' || arg === '-y') parsed.yes = true;
+    else if (arg === '--name') parsed.name = argv[++i];
+    else if (arg.startsWith('--name=')) parsed.name = arg.slice('--name='.length);
+    else if (arg === '--package-name') parsed.packageName = argv[++i];
+    else if (arg.startsWith('--package-name=')) parsed.packageName = arg.slice('--package-name='.length);
+    else if (arg === '--description') parsed.description = argv[++i];
+    else if (arg.startsWith('--description=')) parsed.description = arg.slice('--description='.length);
+    else if (arg === '--author') parsed.author = argv[++i];
+    else if (arg.startsWith('--author=')) parsed.author = arg.slice('--author='.length);
+    else if (arg === '--license') parsed.license = argv[++i];
+    else if (arg.startsWith('--license=')) parsed.license = arg.slice('--license='.length);
+    else if (arg === '--copyright-holder') parsed.copyrightHolder = argv[++i];
+    else if (arg.startsWith('--copyright-holder=')) parsed.copyrightHolder = arg.slice('--copyright-holder='.length);
+    else if (arg === '--copyright-year') parsed.copyrightYear = argv[++i];
+    else if (arg.startsWith('--copyright-year=')) parsed.copyrightYear = arg.slice('--copyright-year='.length);
+    else if (!arg.startsWith('-') && !parsed.targetDir) parsed.targetDir = arg;
+  }
+  return parsed;
+}
+
+async function resolveMetadata(defaultName, cliArgs) {
+  const defaultLicense = process.env.npm_config_init_license || 'MIT';
+  const defaultAuthor = process.env.npm_config_init_author_name || '';
+  const defaultYear = String(new Date().getFullYear());
+
+  let displayName = cliArgs.name || defaultName;
+  let packageName = normalizePackageName(cliArgs.packageName || displayName);
+  let description = cliArgs.description || `GTPLWeb app: ${displayName}`;
+  let author = cliArgs.author || defaultAuthor;
+  let license = cliArgs.license || defaultLicense;
+  let copyrightHolder = cliArgs.copyrightHolder || author;
+  let copyrightYear = String(cliArgs.copyrightYear || defaultYear);
+
+  if (cliArgs.yes || !input.isTTY || !output.isTTY) {
+    return {
+      displayName,
+      packageName,
+      description,
+      author,
+      license,
+      copyrightHolder,
+      copyrightYear
+    };
+  }
+
+  const rl = readline.createInterface({ input, output });
+  try {
+    displayName = await prompt(rl, 'App name', displayName);
+    packageName = normalizePackageName(await prompt(rl, 'Package name', normalizePackageName(packageName || displayName)));
+    description = await prompt(rl, 'Description', description);
+    author = await prompt(rl, 'Author', author);
+    license = await prompt(rl, 'License', license);
+    copyrightHolder = await prompt(rl, 'Copyright holder', copyrightHolder);
+    copyrightYear = await prompt(rl, 'Copyright year', copyrightYear);
+  } finally {
+    rl.close();
+  }
+
+  return {
+    displayName,
+    packageName,
+    description,
+    author,
+    license,
+    copyrightHolder,
+    copyrightYear
+  };
+}
+
+async function prompt(rl, label, fallback) {
+  const text = await rl.question(`${label} [${fallback || ''}]: `);
+  const value = text.trim();
+  return value || fallback || '';
+}
+
+function buildCopyrightLine(meta) {
+  const holder = String(meta.copyrightHolder || '').trim();
+  const year = String(meta.copyrightYear || '').trim();
+  if (!holder && !year) return '';
+  if (holder && year) return `${year} ${holder}`;
+  return holder || year;
+}
 
 function normalizePackageName(name) {
   return name

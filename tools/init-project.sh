@@ -24,6 +24,18 @@ if [ -z "${APP_DIR}" ]; then
   APP_DIR="${TARGET_INPUT}"
 fi
 
+APP_BASENAME="$(basename "${APP_DIR}")"
+DEFAULT_YEAR="$(date +%Y)"
+read -r -p "Description [GTPLWeb app: ${APP_BASENAME}]: " APP_DESCRIPTION
+APP_DESCRIPTION="${APP_DESCRIPTION:-GTPLWeb app: ${APP_BASENAME}}"
+read -r -p "Author []: " APP_AUTHOR
+read -r -p "License [MIT]: " APP_LICENSE
+APP_LICENSE="${APP_LICENSE:-MIT}"
+read -r -p "Copyright holder [${APP_AUTHOR}]: " APP_COPYRIGHT_HOLDER
+APP_COPYRIGHT_HOLDER="${APP_COPYRIGHT_HOLDER:-${APP_AUTHOR}}"
+read -r -p "Copyright year [${DEFAULT_YEAR}]: " APP_COPYRIGHT_YEAR
+APP_COPYRIGHT_YEAR="${APP_COPYRIGHT_YEAR:-${DEFAULT_YEAR}}"
+
 echo "Creating project in: ${APP_DIR}"
 mkdir -p "${APP_DIR}"
 
@@ -33,7 +45,13 @@ if [ -n "$(ls -A "${APP_DIR}" 2>/dev/null || true)" ]; then
 fi
 
 git clone --depth 1 --branch "${GTPLWEB_REF}" "${GTPLWEB_REPO}" "${TMP_DIR}/GTPLWeb"
-node "${TMP_DIR}/GTPLWeb/tools/init-app.js" "${APP_DIR}"
+node "${TMP_DIR}/GTPLWeb/tools/init-app.js" "${APP_DIR}" \
+  --yes \
+  --description "${APP_DESCRIPTION}" \
+  --author "${APP_AUTHOR}" \
+  --license "${APP_LICENSE}" \
+  --copyright-holder "${APP_COPYRIGHT_HOLDER}" \
+  --copyright-year "${APP_COPYRIGHT_YEAR}"
 
 node <<EOF
 const fs = require('fs');
