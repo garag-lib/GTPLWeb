@@ -23,6 +23,14 @@ npm install @mpeliz/gtplweb
 
 ## Quick Start (new app)
 
+Interactive (asks app metadata):
+
+```bash
+npx gtpl-init
+```
+
+Direct target dir:
+
 ```bash
 npx gtpl-init my-app
 cd my-app
@@ -34,6 +42,12 @@ npm run server
 Open `http://localhost:8080`.
 
 Alternative bootstrap (git script):
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/garag-lib/GTPLWeb/main/tools/init-project.sh | bash
+```
+
+Or direct target dir:
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/garag-lib/GTPLWeb/main/tools/init-project.sh | bash -s -- my-app
@@ -153,10 +167,22 @@ sub.off();
 
 ### `gtpl-init`
 
-Create starter app:
+Create starter app (interactive prompts for name/description/author/license/copyright):
+
+```bash
+npx gtpl-init
+```
+
+Target dir:
 
 ```bash
 npx gtpl-init my-app
+```
+
+Non-interactive:
+
+```bash
+npx gtpl-init my-app --yes --name "My App" --description "My GTPL app" --author "Your Name" --license "MIT" --copyright-holder "Your Name" --copyright-year "2026"
 ```
 
 ### `gtpl-aot`
