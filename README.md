@@ -41,16 +41,24 @@ npm run server
 
 Open `http://localhost:8080`.
 
-Alternative bootstrap (git script):
+Recommended bootstrap (interactive one-liner):
+
+```bash
+bash <(curl -fsSL "https://raw.githubusercontent.com/garag-lib/GTPLWeb/main/tools/init-project.sh?v=$(date +%s)")
+```
+
+Direct target dir:
+
+```bash
+bash <(curl -fsSL "https://raw.githubusercontent.com/garag-lib/GTPLWeb/main/tools/init-project.sh?v=$(date +%s)") my-app
+```
+
+This form keeps standard input attached to your terminal while Bash reads the script, so interactive prompts remain visible and accept input normally.
+
+Alternative pipe form:
 
 ```bash
 curl -fsSL "https://raw.githubusercontent.com/garag-lib/GTPLWeb/main/tools/init-project.sh?v=$(date +%s)" | bash
-```
-
-Or direct target dir:
-
-```bash
-curl -fsSL "https://raw.githubusercontent.com/garag-lib/GTPLWeb/main/tools/init-project.sh?v=$(date +%s)" | bash -s -- my-app
 ```
 
 Bootstrap prompts:
@@ -62,7 +70,7 @@ Bootstrap prompts:
 - Copyright holder
 - Copyright year
 
-When stdin is piped (like `curl | bash`), prompts are read from terminal (`/dev/tty`). If no TTY is available, defaults are used.
+If `curl | bash` hangs in your terminal, use the recommended `bash <(curl ...)` form above.
 
 ## App Build Flow
 
