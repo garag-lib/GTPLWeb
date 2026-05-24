@@ -1,16 +1,16 @@
-<h2>Plantillas GTPL</h2>
-<p class="muted">Referencia corta con directivas y combinaciones más usadas.</p>
+<h2>GTPL Templates</h2>
+<p class="muted">Short reference with common directives and combinations.</p>
 
 <section class="grid-2">
   <article class="card">
-    <h3>Interpolación y pipes</h3>
-    <p>Texto: <b>{{ text }}</b></p>
-    <p>Transformado: <b>{{ text:format }}</b></p>
+    <h3>Interpolation and pipes</h3>
+    <p>Text: <b>{{ text }}</b></p>
+    <p>Transformed: <b>{{ text:format }}</b></p>
     <input [value]="{{ text }}" />
   </article>
 
   <article class="card">
-    <h3>g-if y g-notif</h3>
+    <h3>g-if and g-notif</h3>
     <p g-if="isVisible">Visible = true</p>
     <p g-notif="isVisible">Visible = false</p>
     <div class="buttons">
@@ -19,19 +19,19 @@
   </article>
 
   <article class="card">
-    <h3>g-switch y g-case</h3>
+    <h3>g-switch and g-case</h3>
     <div g-switch="kind">
-      <p g-case="'A'">Modo A</p>
-      <p g-case="'B'">Modo B</p>
-      <p g-case="'C'">Modo C</p>
+      <p g-case="'A'">Mode A</p>
+      <p g-case="'B'">Mode B</p>
+      <p g-case="'C'">Mode C</p>
     </div>
     <div class="buttons">
-      <button onclick="{{ nextKind }}">Siguiente modo</button>
+      <button onclick="{{ nextKind }}">Next mode</button>
     </div>
   </article>
 
   <article class="card">
-    <h3>g-for + eventos</h3>
+    <h3>g-for + events</h3>
     <ul>
       <li g-for="list;idx;item">#{{ idx }} -> {{ item }}</li>
     </ul>
@@ -42,10 +42,10 @@
   </article>
 
   <article class="card">
-    <h3>Inputs bidireccionales</h3>
-    <label>Nombre</label>
+    <h3>Two-way inputs</h3>
+    <label>Name</label>
     <input [value]="{{ form.name }}" />
-    <label>Rol</label>
+    <label>Role</label>
     <select [value]="{{ form.role }}">
       <option value="dev">dev</option>
       <option value="qa">qa</option>

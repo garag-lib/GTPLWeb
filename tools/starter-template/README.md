@@ -23,12 +23,12 @@ npm run build:bundle
 
 ## Starter Pages
 
-- `#/`: resumen del proyecto.
-- `#/templates`: expresiones, `g-if`, `g-notif`, `g-switch`, `g-case`, `g-for`, `[value]`, eventos.
-- `#/directives`: directivas WebGTPL `g-class`, `g-set`, `g-component`.
-- `#/services`: `GRouterService` y `GBus`.
-- `#/lazy`: carga perezosa con `import()`.
-- `#/runtime`: ejemplo de componente con `aot: false`.
+- `#/`: project summary.
+- `#/templates`: expressions, `g-if`, `g-notif`, `g-switch`, `g-case`, `g-for`, `[value]`, events.
+- `#/directives`: WebGTPL directives `g-class`, `g-set`, `g-component`.
+- `#/services`: `GRouterService` and `GBus`.
+- `#/lazy`: lazy loading with `import()`.
+- `#/runtime`: component example with `aot: false`.
 
 ## VS Code Tasks
 

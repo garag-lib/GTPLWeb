@@ -7,15 +7,15 @@ import { Component, GTplComponentBase } from '@mpeliz/gtplweb';
   styleMode: 'global'
 })
 export class StatsCard extends GTplComponentBase {
-  title = 'Estadística';
-  subtitle = 'Resumen diario';
+  title = 'Metric';
+  subtitle = 'Daily summary';
   value = 0;
   unit = 'pts';
   trend = '+0%';
   status = 'stable';
   items = [
-    { label: 'Mínimo', value: '0' },
-    { label: 'Máximo', value: '0' },
-    { label: 'Promedio', value: '0' }
+    { label: 'Min', value: '0' },
+    { label: 'Max', value: '0' },
+    { label: 'Average', value: '0' }
   ];
 }

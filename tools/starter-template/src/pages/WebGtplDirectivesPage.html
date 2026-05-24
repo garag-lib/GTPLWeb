@@ -1,10 +1,10 @@
-<h2>Directivas de GTPLWeb</h2>
-<p class="muted">`g-class`, `g-set` y `g-component` en uso combinado.</p>
+<h2>GTPLWeb Directives</h2>
+<p class="muted">`g-class`, `g-set` and `g-component` in combined usage.</p>
 
 <section class="grid-2">
   <article class="card">
     <h3>g-class</h3>
-    <div g-class="{{ classList }}">Caja con clase dinámica</div>
+    <div g-class="{{ classList }}">Box with dynamic class</div>
     <div class="buttons">
       <button onclick="{{ toggleClass }}">Toggle class</button>
     </div>
@@ -12,22 +12,21 @@
 
   <article class="card">
     <h3>g-set</h3>
-    <p g-set:setTitleValue="{{ injectedTitle }}">Asignación reactiva al controller padre.</p>
-    <p>title actual: <b>{{ setTitleValue }}</b></p>
+    <p g-set:setTitleValue="{{ injectedTitle }}">Reactive assignment to parent controller.</p>
+    <p>Current title: <b>{{ setTitleValue }}</b></p>
     <div class="buttons">
-      <button onclick="{{ randomizeTitle }}">Cambiar title con g-set</button>
+      <button onclick="{{ randomizeTitle }}">Change title with g-set</button>
     </div>
   </article>
 
   <article class="card">
-    <h3>g-component (dinámico)</h3>
+    <h3>g-component (dynamic)</h3>
     <div class="buttons">
       <button onclick="{{ setNotice }}">notice-box</button>
       <button onclick="{{ setStats }}">stats-card</button>
-      <button onclick="{{ randomizeStats }}">Actualizar stats</button>
+      <button onclick="{{ randomizeStats }}">Update stats</button>
       <button onclick="{{ clearDynamic }}">clear</button>
     </div>
     <div g-bind="dynamicHostEl" g-component="{{ currentComponent }}"></div>
   </article>
-
 </section>

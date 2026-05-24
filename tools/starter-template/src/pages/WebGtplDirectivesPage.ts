@@ -11,21 +11,21 @@ export class WebGtplDirectivesPage extends GTplComponentBase {
   classList = 'card';
   enabled = true;
   currentComponent = 'notice-box';
-  injectedTitle = 'Inyectado desde g-set';
-  setTitleValue = '(sin valor aún)';
+  injectedTitle = 'Injected via g-set';
+  setTitleValue = '(no value yet)';
   dynamicCtrl: any = null;
   dynamicHostEl: any = null;
 
-  title = 'Rendimiento';
-  subtitle = 'Métrica dinámica';
+  title = 'Performance';
+  subtitle = 'Dynamic metric';
   value = 96;
   unit = 'pts';
   trend = '+2%';
   status = 'up';
   items = [
-    { label: 'Mínimo', value: '90' },
-    { label: 'Máximo', value: '102' },
-    { label: 'Promedio', value: '96' }
+    { label: 'Min', value: '90' },
+    { label: 'Max', value: '102' },
+    { label: 'Average', value: '96' }
   ];
 
   onTemplateReady() {
@@ -63,7 +63,7 @@ export class WebGtplDirectivesPage extends GTplComponentBase {
   }
 
   randomizeTitle() {
-    this.injectedTitle = 'Inyectado #' + Math.floor(Math.random() * 1000);
+    this.injectedTitle = 'Injected #' + Math.floor(Math.random() * 1000);
     this.setTitleValue = this.injectedTitle;
     this.applyToDynamicComponent();
   }
@@ -78,16 +78,16 @@ export class WebGtplDirectivesPage extends GTplComponentBase {
     const max = value + (5 + Math.floor(Math.random() * 5));
     const avg = Math.round((min + max + value) / 3);
 
-    this.title = 'Rendimiento';
-    this.subtitle = 'Métrica dinámica';
+    this.title = 'Performance';
+    this.subtitle = 'Dynamic metric';
     this.value = value;
     this.unit = 'pts';
     this.trend = trend;
     this.status = status;
     this.items = [
-      { label: 'Mínimo', value: String(min) },
-      { label: 'Máximo', value: String(max) },
-      { label: 'Promedio', value: String(avg) }
+      { label: 'Min', value: String(min) },
+      { label: 'Max', value: String(max) },
+      { label: 'Average', value: String(avg) }
     ];
     this.applyToDynamicComponent();
   }
@@ -113,7 +113,7 @@ export class WebGtplDirectivesPage extends GTplComponentBase {
 
     if (this.currentComponent === 'notice-box') {
       this.dynamicCtrl.title = this.injectedTitle;
-      this.dynamicCtrl.text = 'Actualizado desde controller padre por referencia';
+      this.dynamicCtrl.text = 'Updated from parent controller by reference';
     }
   }
 

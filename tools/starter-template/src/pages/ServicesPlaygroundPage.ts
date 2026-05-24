@@ -18,7 +18,7 @@ export class ServicesPlaygroundPage extends GTplComponentBase {
 
     const router = GRouterService.getRouter();
     const match = router?.getMatch();
-    this.routeUrl = match?.fullPath || '(router no listo)';
+    this.routeUrl = match?.fullPath || '(router not ready)';
   }
 
   onDestroy() {
@@ -26,7 +26,7 @@ export class ServicesPlaygroundPage extends GTplComponentBase {
   }
 
   emitMessage() {
-    const text = 'evento #' + (this.busMessages.length + 1);
+    const text = 'event #' + (this.busMessages.length + 1);
     GBus.emit('starter.note', { message: text });
   }
 }

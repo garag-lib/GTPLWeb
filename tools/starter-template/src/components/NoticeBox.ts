@@ -7,6 +7,6 @@ import { Component, GTplComponentBase } from '@mpeliz/gtplweb';
   styleMode: 'global'
 })
 export class NoticeBox extends GTplComponentBase {
-  title = 'Componente dinámico';
-  text = 'Este bloque se monta con g-component.';
+  title = 'Dynamic component';
+  text = 'This block is rendered through g-component.';
 }
