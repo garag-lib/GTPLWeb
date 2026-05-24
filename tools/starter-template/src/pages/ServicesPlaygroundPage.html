@@ -1,0 +1,20 @@
+<h2>Servicios GTPLWeb</h2>
+<p class="muted">Router global + bus de eventos para coordinación entre componentes.</p>
+
+<section class="grid-2">
+  <article class="card">
+    <h3>GRouterService</h3>
+    <p>URL actual: <b>{{ routeUrl }}</b></p>
+    <p>Prueba también rutas lazy en <a href="#/lazy">#/lazy</a>.</p>
+  </article>
+
+  <article class="card">
+    <h3>GBus</h3>
+    <div class="buttons">
+      <button onclick="{{ emitMessage }}">Emitir evento</button>
+    </div>
+    <ul>
+      <li g-for="busMessages;idx;msg">#{{ idx }} -> {{ msg }}</li>
+    </ul>
+  </article>
+</section>

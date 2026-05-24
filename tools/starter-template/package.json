@@ -1,0 +1,33 @@
+{
+  "name": "__APP_PACKAGE_NAME__",
+  "version": "0.1.0",
+  "private": true,
+  "description": "__APP_DESCRIPTION__",
+  "license": "__APP_LICENSE__",
+  "author": "__APP_AUTHOR__",
+  "copyright": "__APP_COPYRIGHT__",
+  "type": "module",
+  "scripts": {
+    "clean": "rm -rf src-aot www/dist",
+    "aot": "node ./node_modules/@mpeliz/gtplweb/tools/aot-prebuild.js",
+    "build:dev": "npm run clean && npm run aot && node ./node_modules/@mpeliz/gtplweb/tools/app-build.js --mode dev",
+    "build:bundle": "npm run clean && npm run aot && node ./node_modules/@mpeliz/gtplweb/tools/app-build.js --mode bundle",
+    "build:bundle-split": "npm run clean && npm run aot && node ./node_modules/@mpeliz/gtplweb/tools/app-build.js --mode bundle-split",
+    "server": "php -S 0.0.0.0:8080 -t www"
+  },
+  "gtplweb": {
+    "srcDir": "src",
+    "aotDir": "src-aot",
+    "outDir": "www/dist",
+    "entry": "src-aot/main.ts",
+    "i18nDir": "src/i18n"
+  },
+  "dependencies": {
+    "@mpeliz/gtplweb": "github:garag-lib/GTPLWeb",
+    "jsdom": "^27.0.1",
+    "typescript": "^5.9.3",
+    "sass": "^1.93.3",
+    "glob": "^11.0.3",
+    "esbuild": "^0.25.11"
+  }
+}

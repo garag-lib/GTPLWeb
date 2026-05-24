@@ -1,0 +1,56 @@
+<h2>Plantillas GTPL</h2>
+<p class="muted">Referencia corta con directivas y combinaciones más usadas.</p>
+
+<section class="grid-2">
+  <article class="card">
+    <h3>Interpolación y pipes</h3>
+    <p>Texto: <b>{{ text }}</b></p>
+    <p>Transformado: <b>{{ text:format }}</b></p>
+    <input [value]="{{ text }}" />
+  </article>
+
+  <article class="card">
+    <h3>g-if y g-notif</h3>
+    <p g-if="isVisible">Visible = true</p>
+    <p g-notif="isVisible">Visible = false</p>
+    <div class="buttons">
+      <button onclick="{{ toggle }}">Toggle</button>
+    </div>
+  </article>
+
+  <article class="card">
+    <h3>g-switch y g-case</h3>
+    <div g-switch="kind">
+      <p g-case="'A'">Modo A</p>
+      <p g-case="'B'">Modo B</p>
+      <p g-case="'C'">Modo C</p>
+    </div>
+    <div class="buttons">
+      <button onclick="{{ nextKind }}">Siguiente modo</button>
+    </div>
+  </article>
+
+  <article class="card">
+    <h3>g-for + eventos</h3>
+    <ul>
+      <li g-for="list;idx;item">#{{ idx }} -> {{ item }}</li>
+    </ul>
+    <div class="buttons">
+      <button onclick="{{ pushItem }}">Push</button>
+      <button onclick="{{ popItem }}">Pop</button>
+    </div>
+  </article>
+
+  <article class="card">
+    <h3>Inputs bidireccionales</h3>
+    <label>Nombre</label>
+    <input [value]="{{ form.name }}" />
+    <label>Rol</label>
+    <select [value]="{{ form.role }}">
+      <option value="dev">dev</option>
+      <option value="qa">qa</option>
+      <option value="pm">pm</option>
+    </select>
+    <p>{{ form.name }} / {{ form.role }}</p>
+  </article>
+</section>

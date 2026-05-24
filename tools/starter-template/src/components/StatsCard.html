@@ -1,0 +1,17 @@
+<article class="stats-card">
+  <header class="stats-head">
+    <div class="stats-title">{{ title }}</div>
+    <div class="stats-trend {{ status }}">{{ trend }}</div>
+  </header>
+  <p class="stats-subtitle">{{ subtitle }}</p>
+  <div class="stats-main">
+    <span class="stats-value">{{ value }}</span>
+    <span class="stats-unit">{{ unit }}</span>
+  </div>
+  <ul class="stats-list">
+    <li g-for="items;idx;item">
+      <span>{{ item.label }}</span>
+      <b>{{ item.value }}</b>
+    </li>
+  </ul>
+</article>
