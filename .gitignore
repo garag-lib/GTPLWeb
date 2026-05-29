@@ -3,6 +3,7 @@ node_modules/
 
 # Build outputs
 src-aot/
+tools/starter-bundle.generated.js
 coverage/
 .nyc_output/
 
