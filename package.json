@@ -2,7 +2,7 @@
   "author": "Manuel Peliz",
   "license": "Apache-2.0",
   "name": "@mpeliz/gtplweb",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Web component framework built on top of GTPL with AOT compilation.",
   "keywords": [
     "gtpl",
