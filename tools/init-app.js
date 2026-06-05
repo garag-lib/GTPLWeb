@@ -4,7 +4,8 @@ import fs from 'fs';
 import path from 'path';
 import readline from 'readline/promises';
 import { stdin as input, stdout as output } from 'process';
-import { STARTER_BUNDLE_FILES } from './starter-bundle.generated.js';
+
+const repoRoot = path.resolve(path.dirname(new URL(import.meta.url).pathname), '..');
 
 const cli = parseArgs(process.argv.slice(2));
 const targetDir = path.resolve(process.cwd(), cli.targetDir || '.');
@@ -26,10 +27,11 @@ const vars = {
   '__APP_LICENSE__': metadata.license,
   '__APP_COPYRIGHT__': copyrightLine || ''
 };
+const starterBundleFiles = await loadStarterBundleFiles();
 
 fs.mkdirSync(targetDir, { recursive: true });
 
-for (const file of STARTER_BUNDLE_FILES) {
+for (const file of starterBundleFiles) {
   const relPath = file.path;
   const fullPath = path.join(targetDir, relPath);
   if (fs.existsSync(fullPath)) {
@@ -64,6 +66,36 @@ for (const file of STARTER_BUNDLE_FILES) {
 console.log(`GTPLWeb app created in ${path.relative(process.cwd(), targetDir) || '.'}`);
 console.log('Starter scaffold loaded from tools/starter-template bundle');
 console.log('Next: npm install && npm run build:dev && npm run server');
+
+async function loadStarterBundleFiles() {
+  const generatedFile = path.join(repoRoot, 'tools', 'starter-bundle.generated.js');
+  if (fs.existsSync(generatedFile)) {
+    const mod = await import(new URL(generatedFile, 'file://').href);
+    return mod.STARTER_BUNDLE_FILES;
+  }
+
+  const templateDir = path.join(repoRoot, 'tools', 'starter-template');
+  if (!fs.existsSync(templateDir)) {
+    console.error('Missing starter bundle and template directory:', templateDir);
+    process.exit(1);
+  }
+
+  return walkFiles(templateDir).sort().map((fullPath) => ({
+    path: path.relative(templateDir, fullPath).replaceAll(path.sep, '/'),
+    encoding: 'base64',
+    content: fs.readFileSync(fullPath).toString('base64')
+  }));
+}
+
+function walkFiles(dir) {
+  const out = [];
+  for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
+    const full = path.join(dir, entry.name);
+    if (entry.isDirectory()) out.push(...walkFiles(full));
+    else out.push(full);
+  }
+  return out;
+}
 
 function applyTemplate(inputText, replacements) {
   let text = inputText;
