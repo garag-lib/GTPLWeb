@@ -85,6 +85,31 @@ test("g-component mounts registered component on init", async () => {
   assert.ok(host.querySelector(childTag), "Expected mounted child component inside g-component host");
 });
 
+test("AOT web component with light DOM defers render until connected", async () => {
+  const tag = uniqueTag("g-light-aot");
+
+  class LightDomCtr extends GTplComponentBase {}
+  await attachAotTemplate(LightDomCtr, "<section data-rendered='ok'>rendered</section>");
+
+  Component({
+    tag,
+    shadow: false,
+    template: "<section data-rendered='ok'>rendered</section>"
+  })(LightDomCtr);
+
+  let host;
+  assert.doesNotThrow(() => {
+    host = document.createElement(tag);
+  }, "Expected custom element construction without light DOM children");
+
+  assert.equal(host.querySelector("[data-rendered='ok']"), null, "Expected no render before connect");
+
+  document.body.appendChild(host);
+  await wait(20);
+
+  assert.ok(host.querySelector("[data-rendered='ok']"), "Expected rendered content after connect");
+});
+
 test("GWatcher calls onDisconnect for injected controller on detach", async () => {
   const calls = { connect: 0, disconnect: 0 };
   const ctrl = {

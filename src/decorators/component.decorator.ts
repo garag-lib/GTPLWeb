@@ -40,6 +40,7 @@ const isLikelyHtml = (s?: string | null): s is string => !!s && /^\s*</.test(s) 
 const COMP_CTRL: unique symbol = Symbol('COMP_CTRL');
 const COMP_FLAGS: unique symbol = Symbol('COMP_FLAGS');
 const COMP_GTPL: unique symbol = Symbol('COMP_GTPL');
+const COMP_MOUNT: unique symbol = Symbol('COMP_MOUNT');
 const CLASS_META: unique symbol = Symbol('CLASS_META');
 const HOST_CREATE: unique symbol = Symbol('HOST_CREATE');
 
@@ -114,10 +115,13 @@ function initComponentHost(host: any, ControllerClass: any, baseMeta: ComponentM
   const mountTemplateIfReady = () => {
     if (!flags.firstRender) return;
     if (!host[COMP_GTPL]) return;
+    if (useWebComponent && !classMeta.shadow && !host.isConnected) return;
     flags.firstRender = false;
     host[COMP_GTPL].addTo(host.$host);
     ctrl.onTemplateReady?.();
   };
+
+  defineHidden(host, COMP_MOUNT, mountTemplateIfReady);
 
   const loadTemplate = () => {
     const gtpl = instantiateTemplate(ctrl, classMeta.templateFactory);
@@ -269,6 +273,7 @@ export function Component<C extends GController, TBase extends ControllerCtor<C>
         declare readonly [COMP_CTRL]: Ctrl;
         declare readonly [COMP_FLAGS]: Flags;
         declare [COMP_GTPL]: any;
+        declare [COMP_MOUNT]: () => void;
 
         constructor(...args:any) {
           super();
@@ -276,6 +281,7 @@ export function Component<C extends GController, TBase extends ControllerCtor<C>
         }
 
         connectedCallback(): void {
+          this[COMP_MOUNT]?.();
           getCtrl(this).onConnect?.();
         }
 
