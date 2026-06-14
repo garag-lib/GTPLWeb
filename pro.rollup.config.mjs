@@ -3,13 +3,30 @@ import commonjs from '@rollup/plugin-commonjs';
 import { nodeResolve } from '@rollup/plugin-node-resolve';
 import dts from 'rollup-plugin-dts';
 import fs from 'fs';
-import terser from '@rollup/plugin-terser';
+import { transform } from 'esbuild';
 import copy from 'rollup-plugin-copy';
 
 const inputDir = fs.existsSync('./src-aot') ? './src-aot' : './src';
 const isProd = true;
 
 console.log(`Compilando desde: ${inputDir} (${isProd ? 'PROD' : 'DEV'})`);
+
+function minifyWithEsbuild() {
+  return {
+    name: 'minify-with-esbuild',
+    async renderChunk(code) {
+      const result = await transform(code, {
+        minify: true,
+        target: 'es2020',
+        format: 'esm'
+      });
+      return {
+        code: result.code,
+        map: null
+      };
+    }
+  };
+}
 
 export default [
   {
@@ -29,7 +46,7 @@ export default [
           sourceMap: !isProd
         }
       }),
-      ...(isProd ? [terser()] : []),
+      ...(isProd ? [minifyWithEsbuild()] : []),
       copy({
         targets: [{ src: 'src-aot/**/*.css', dest: 'dist' }],
         hook: 'writeBundle'
