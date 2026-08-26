@@ -102,6 +102,12 @@ declare class GDirectiveBase {
  */
 declare class Animations {
     static enabled: boolean;
+    private static animationSequence;
+    private static animationTokens;
+    private static pointerEventsBeforeAnimation;
+    private static prefersReducedMotion;
+    private static lockPointerEvents;
+    private static restorePointerEvents;
     static enable(): void;
     static disable(): void;
     /** Define el estado inicial sin transición */

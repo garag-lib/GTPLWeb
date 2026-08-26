@@ -31,7 +31,7 @@ globalThis.cancelAnimationFrame =
   dom.window.cancelAnimationFrame?.bind(dom.window) ??
   ((id) => clearTimeout(id));
 
-const { Component, GTplComponentBase, getControllerFromComponent, GWatcher } = await import("../dist/gtplweb.esm.js");
+const { Animations, Component, GTplComponentBase, getControllerFromComponent, GWatcher } = await import("../dist/gtplweb.esm.js");
 const { default: GTPL } = await import("@mpeliz/gtpl");
 
 const wait = (ms = 0) => new Promise((resolve) => setTimeout(resolve, ms));
@@ -155,4 +155,78 @@ test("destroy() clears provided host HTML for non-web components", async () => {
 
   await wait(10);
   assert.equal(host.innerHTML, "", "Expected host HTML to be cleared after destroy");
+});
+
+test("Animations resolves immediately and keeps pointer events with reduced motion", async () => {
+  const previousMatchMedia = window.matchMedia;
+  window.matchMedia = () => ({ matches: true });
+  const element = document.createElement("div");
+  element.style.pointerEvents = "all";
+
+  try {
+    await Animations.slideFadeInY(element, "16px", 1000);
+    assert.equal(element.style.opacity, "1");
+    assert.equal(element.style.transform, "translateY(0)");
+    assert.equal(element.style.pointerEvents, "all");
+  } finally {
+    window.matchMedia = previousMatchMedia;
+  }
+});
+
+test("Animations restores original pointer events on transitionend", async () => {
+  const element = document.createElement("div");
+  element.style.pointerEvents = "all";
+  const animation = Animations.fadeIn(element, 1000);
+  await wait(40);
+  element.dispatchEvent(new Event("transitionend"));
+  await animation;
+
+  assert.equal(element.style.pointerEvents, "all");
+});
+
+test("Animations resolves and unlocks on transitioncancel", async () => {
+  const element = document.createElement("div");
+  const animation = Animations.fadeIn(element, 1000);
+  await wait(40);
+  element.dispatchEvent(new Event("transitioncancel"));
+  await animation;
+
+  assert.equal(element.style.pointerEvents, "");
+});
+
+test("Animations timeout prevents permanent pointer lock", async () => {
+  const element = document.createElement("div");
+  await Animations.fadeIn(element, 1);
+
+  assert.equal(element.style.pointerEvents, "");
+});
+
+test("Animations timeout also unlocks when animation frames never run", async () => {
+  const previousRequestAnimationFrame = globalThis.requestAnimationFrame;
+  globalThis.requestAnimationFrame = () => 0;
+  const element = document.createElement("div");
+
+  try {
+    await Animations.fadeIn(element, 1);
+    assert.equal(element.style.pointerEvents, "");
+  } finally {
+    globalThis.requestAnimationFrame = previousRequestAnimationFrame;
+  }
+});
+
+test("Animations keeps pointer lock when an older overlapping transition ends", async () => {
+  const element = document.createElement("div");
+  element.style.pointerEvents = "all";
+  const first = Animations.fadeIn(element, 1000);
+  await wait(40);
+
+  const second = Animations.fadeIn(element, 1000);
+  element.dispatchEvent(new Event("transitioncancel"));
+  await first;
+  assert.equal(element.style.pointerEvents, "none");
+
+  await wait(40);
+  element.dispatchEvent(new Event("transitionend"));
+  await second;
+  assert.equal(element.style.pointerEvents, "all");
 });

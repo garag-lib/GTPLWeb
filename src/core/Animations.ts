@@ -83,6 +83,32 @@
 export class Animations {
 
     static enabled = true;
+    private static animationSequence = 0;
+    private static animationTokens = new WeakMap<HTMLElement, number>();
+    private static pointerEventsBeforeAnimation = new WeakMap<HTMLElement, string>();
+
+    private static prefersReducedMotion() {
+        return typeof window !== "undefined"
+            && typeof window.matchMedia === "function"
+            && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    }
+
+    private static lockPointerEvents(element: HTMLElement) {
+        if (!this.pointerEventsBeforeAnimation.has(element)) {
+            this.pointerEventsBeforeAnimation.set(element, element.style.pointerEvents);
+        }
+        element.style.pointerEvents = "none";
+    }
+
+    private static restorePointerEvents(element: HTMLElement, token: number) {
+        if (this.animationTokens.get(element) !== token) return;
+        this.animationTokens.delete(element);
+        if (!this.pointerEventsBeforeAnimation.has(element)) return;
+        const previous = this.pointerEventsBeforeAnimation.get(element) ?? "";
+        this.pointerEventsBeforeAnimation.delete(element);
+        if (previous) element.style.pointerEvents = previous;
+        else element.style.removeProperty("pointer-events");
+    }
 
     static enable() {
         Animations.enabled = true;
@@ -94,9 +120,9 @@ export class Animations {
 
     /** Define el estado inicial sin transición */
     static setInitial(element: HTMLElement, styles: Partial<CSSStyleDeclaration>) {
-        if (!Animations.enabled) return;
+        if (!Animations.enabled || this.prefersReducedMotion()) return;
         element.style.transition = "none";
-        element.style.pointerEvents = "none";
+        this.lockPointerEvents(element);
         Object.assign(element.style, styles);
     }
 
@@ -117,22 +143,38 @@ export class Animations {
         duration: number = 300,
         easing: string = "ease"
     ): Promise<void> {
-        if (!Animations.enabled) {
+        const token = ++this.animationSequence;
+        this.animationTokens.set(element, token);
+
+        if (!Animations.enabled || this.prefersReducedMotion() || duration <= 0) {
             Object.assign(element.style, styles);
+            this.restorePointerEvents(element, token);
             return Promise.resolve();
         }
         return new Promise(resolve => {
+            let settled = false;
+            const finish = () => {
+                if (settled) return;
+                settled = true;
+                element.removeEventListener("transitionend", onFinish);
+                element.removeEventListener("transitioncancel", onFinish);
+                clearTimeout(timeoutId);
+                this.restorePointerEvents(element, token);
+                resolve();
+            };
+            const onFinish = (event: Event) => {
+                if (event.target === element) finish();
+            };
+            const timeoutId = setTimeout(finish, Math.max(0, duration) + 100);
+
             requestAnimationFrame(() => {
+                if (settled) return;
                 requestAnimationFrame(() => {
+                    if (settled) return;
+                    element.addEventListener("transitionend", onFinish);
+                    element.addEventListener("transitioncancel", onFinish);
                     element.style.transition = `all ${duration}ms ${easing}`;
                     Object.assign(element.style, styles);
-                    const onEnd = (ev: Event) => {
-                        if (ev.target !== element) return;
-                        element.removeEventListener("transitionend", onEnd);
-                        element.style.pointerEvents = "auto";
-                        resolve();
-                    };
-                    element.addEventListener("transitionend", onEnd);
                 });
             });
         });
@@ -361,4 +403,3 @@ export class Animations {
         }
     }
 }
-
