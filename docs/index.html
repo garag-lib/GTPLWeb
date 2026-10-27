@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="description" content="Learn GTPLWeb with working examples: reactive web components, nested inputs, dynamic components, event bus, routing, lifecycle and Shadow DOM." />
+    <title>GTPLWeb Documentation Playground</title>
+    <link rel="stylesheet" href="playground.css" />
+    <script defer src="gtplweb-docs.js"></script>
+</head>
+<body>
+    <header class="hero">
+        <p class="eyebrow">GTPLWeb / DOCUMENTATION</p>
+        <h1>Components, brought to life.</h1>
+        <p>Build on GTPL's reactive DOM with web components, declarative inputs, shared services and AOT tooling. Explore eight working examples, then open the exact controller and template behind each one.</p>
+        <nav class="hero-actions" aria-label="Project links">
+            <a class="primary" href="#quickstart">Get started</a>
+            <a href="https://github.com/garag-lib/GTPLWeb">GitHub</a>
+            <a href="https://www.npmjs.com/package/@mpeliz/gtplweb">npm package</a>
+            <a href="https://garag-lib.github.io/GTPL/">GTPL playground ↗</a>
+        </nav>
+    </header>
+    <div class="layout">
+        <aside class="toc">
+            <p class="eyebrow">PLAYGROUND INDEX</p>
+            <nav aria-label="Documentation sections">
+                <ul><li><a href="#quickstart">Quick start & AOT workflow</a></li></ul>
+                <ol id="example-links"></ol>
+                <ul><li><a href="#reference">API & practical notes</a></li></ul>
+            </nav>
+        </aside>
+        <main>
+            <div class="summary-grid">
+                <article><h2>Native components</h2><p>Controllers + custom elements. Use light DOM or a scoped ShadowRoot.</p></article>
+                <article><h2>Reactive templates</h2><p>GTPL bindings, lists and events, plus GTPLWeb's component directives.</p></article>
+                <article><h2>Build-time templates</h2><p>Compile HTML and styles with gtpl-aot, then bundle your application.</p></article>
+            </div>
+            <section class="info-card" id="quickstart">
+                <p class="eyebrow">START HERE</p>
+                <h2>Quick start & AOT workflow</h2>
+                <p>Create an application with the included starter:</p>
+                <pre><code>npx --package @mpeliz/gtplweb gtpl-init my-app --yes
+cd my-app
+npm install
+npm run build:dev
+npm run server</code></pre>
+                <p>Open <code>http://localhost:8080</code>. For an existing app, install <code>@mpeliz/gtplweb</code>. TypeScript projects enable <code>experimentalDecorators</code>.</p>
+                <pre><code>import { Component, GTplComponentBase } from '@mpeliz/gtplweb';
+
+@Component({
+  tag: 'hello-card',
+  template: './HelloCard.html',
+  style: './HelloCard.scss',
+  styleMode: 'inline'
+})
+export class HelloCard extends GTplComponentBase {
+  name = 'GTPLWeb';
+}</code></pre>
+                <p><code>HelloCard.html</code> contains <code>&lt;h2&gt;Hello {{ name }}&lt;/h2&gt;</code>. Import the component module before using <code>&lt;hello-card&gt;&lt;/hello-card&gt;</code>.</p>
+                <p><code>gtpl-aot</code> compiles templates and styles into <code>src-aot</code>; <code>gtpl-app-build --mode dev</code> also runs the AOT step before bundling. Use <code>--mode bundle</code> for a production bundle. See the <a href="https://github.com/garag-lib/GTPLWeb#cli-tools">CLI reference</a> for configuration.</p>
+                <p class="note">This playground uses bundled local framework code and inline JIT templates for immediate demos. Source panels use JavaScript's <code>Component(config)(Controller)</code>, equivalent to TypeScript's <code>@Component(config)</code>. The examples are predefined trusted templates.</p>
+            </section>
+            <div id="examples"></div>
+            <noscript><p class="info-card">Enable JavaScript to run the interactive examples. The quick-start instructions and API reference remain available.</p></noscript>
+            <section class="info-card" id="reference">
+                <h2>API & practical notes</h2>
+                <div class="table-scroll"><table>
+                    <thead><tr><th>API</th><th>Purpose</th></tr></thead>
+                    <tbody>
+                        <tr><td><code>Component(config)</code></td><td>Register a controller. The tag must contain a hyphen. Import each component module once.</td></tr>
+                        <tr><td><code>GTplComponentBase</code></td><td>Optional lifecycle hooks plus injected <code>$el</code> and <code>destroy()</code>.</td></tr>
+                        <tr><td><code>g-set:property.path</code></td><td>Assign an input to a child component's controller. Initialize intermediate objects in the child.</td></tr>
+                        <tr><td><code>g-class</code></td><td>Replace classes from an array or a space-separated string.</td></tr>
+                        <tr><td><code>g-component</code></td><td>Mount a registered component by tag; switching destroys its previous controller.</td></tr>
+                        <tr><td><code>GBus.subscribe / emit</code></td><td>Coordinate components through events and namespaces. Release subscriptions in <code>onDestroy()</code>.</td></tr>
+                        <tr><td><code>GRouterService.init(routes)</code></td><td>Start shared application routing. Hash mode is the default; router changes emit <code>urlChanged</code> in the <code>router</code> namespace.</td></tr>
+                        <tr><td><code>GRouter.matchPath(path)</code></td><td>Resolve route patterns without navigation. Supports parameter matching, regex validation and middleware.</td></tr>
+                    </tbody>
+                </table></div>
+                <p>Removing a native element triggers <code>onDisconnect()</code>; call its controller's <code>destroy()</code> when permanently disposing it. <code>g-component</code> handles replacement cleanup. Keep documentation anchors separate from an application's hash router.</p>
+                <p>Rebuild this page from the repository with <code>npm run build:docs</code>. Serve <code>docs/</code> with any static HTTP server, including GitHub Pages.</p>
+            </section>
+        </main>
+    </div>
+    <footer>GTPLWeb Documentation Playground · Powered by GTPL · Apache-2.0</footer>
+</body>
+</html>

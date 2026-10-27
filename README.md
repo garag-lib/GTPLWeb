@@ -9,6 +9,27 @@ Web framework on top of `@mpeliz/gtpl` for browser apps with:
 - app bundler (`gtpl-app-build`)
 - app starter (`gtpl-init`)
 
+## Documentation playground
+
+Interactive examples: [GTPLWeb Documentation Playground](docs/index.html).
+
+The `docs/` directory contains a self-contained static playground for components,
+nested `g-set` inputs, `g-class`, dynamic components, `GBus`, routing, lifecycle
+and Shadow DOM. Rebuild its local browser bundle after changing framework code:
+
+```bash
+npm install
+npm run build:docs
+python3 -m http.server 8080 --directory docs
+```
+
+Open `http://localhost:8080`. To publish with GitHub Pages, select the `main`
+branch and `/docs` folder in the repository’s Pages settings. Once enabled, the
+expected public URL is `https://garag-lib.github.io/GTPLWeb/`.
+
+The examples use trusted inline JIT templates; application templates can use the
+AOT workflow below.
+
 ## Requirements
 
 - Node.js 18+
@@ -275,6 +296,8 @@ Main exports:
 - `npm run test`
 - `npm run build:structured`
 - `npm run build:bundle`
+- `npm run build:docs`
+- `npm run test:docs`
 
 ## Troubleshooting
 

@@ -52,11 +52,13 @@
     "clean": "rm -rf dist src-aot",
     "build:starter-bundle": "node tools/build-starter-bundle.js",
     "aot": "node tools/aot-prebuild.js",
-    "test": "npm run build:structured && node --test tests/*.test.mjs",
+    "test": "npm run build:structured && npm run build:docs && node --test tests/*.test.mjs",
     "typecheck": "tsc --noEmit",
     "prepublishOnly": "npm run build:starter-bundle && npm run typecheck && npm run build:bundle",
     "build:bundle": "npm run clean && npm run aot && rollup -c pro.rollup.config.mjs",
-    "build:structured": "npm run clean && npm run aot && rollup -c rollup.config.mjs"
+    "build:structured": "npm run clean && npm run aot && rollup -c rollup.config.mjs",
+    "build:docs": "node tools/build-docs.mjs",
+    "test:docs": "npm run build:docs && node --test tests/docs.test.mjs"
   },
   "bin": {
     "gtpl-aot": "tools/aot-prebuild.js",
