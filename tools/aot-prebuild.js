@@ -7,7 +7,7 @@
  * 2️⃣ Carga GTPL (desde npm link gtpl)
  * 3️⃣ Escanea los .ts con el parser de TypeScript
  * 4️⃣ Detecta @Component() con AST (no regex)
- * 5️⃣ Compila HTML con GTPL.jit.GCode()
+ * 5️⃣ Compila HTML con el backend GTPL configurado
  * 6️⃣ Compila CSS/SCSS/SASS según styleMode
  * 7️⃣ Inyecta código AOT en src-aot/
  */
@@ -25,6 +25,17 @@ import * as sass from 'sass'
 const ROOT_DIR = process.cwd();
 const args = parseArgs(process.argv.slice(2));
 const config = readConfig();
+const TEMPLATE_COMPILER = args.compiler ?? config.compiler ?? 'reference';
+const METHOD_ALIASES = args.methodAliases ?? config.methodAliases ?? false;
+if (!['reference', 'optimized'].includes(TEMPLATE_COMPILER)) {
+    throw new Error('compiler debe ser reference u optimized');
+}
+if (typeof METHOD_ALIASES !== 'boolean') {
+    throw new Error('methodAliases debe ser booleano');
+}
+if (METHOD_ALIASES && TEMPLATE_COMPILER !== 'optimized') {
+    throw new Error('methodAliases requiere compiler=optimized');
+}
 const SRC_DIR = path.resolve(ROOT_DIR, args.srcDir || config.srcDir || 'src');
 const OUT_DIR = path.resolve(ROOT_DIR, args.aotDir || args.outDir || config.aotDir || config.srcAotDir || 'src-aot');
 const TSCONFIG_PATH = path.resolve(ROOT_DIR, args.tsconfig || config.tsconfig || 'tsconfig.json');
@@ -57,8 +68,21 @@ function parseArgs(argv) {
         else if (arg === '--public-out-dir') parsed.publicOutDir = argv[++i];
         else if (arg.startsWith('--public-out-dir=')) parsed.publicOutDir = arg.slice('--public-out-dir='.length);
         else if (arg === '--no-static-copy') parsed.staticOutDir = false;
+        else if (arg === '--compiler') {
+            parsed.compiler = argv[++i];
+            if (!parsed.compiler || parsed.compiler.startsWith('--')) throw new Error('--compiler requiere reference u optimized');
+        }
+        else if (arg.startsWith('--compiler=')) parsed.compiler = arg.slice('--compiler='.length);
+        else if (arg === '--method-aliases') parsed.methodAliases = parseBoolean(argv[++i]);
+        else if (arg.startsWith('--method-aliases=')) parsed.methodAliases = parseBoolean(arg.slice('--method-aliases='.length));
     }
     return parsed;
+}
+
+function parseBoolean(value) {
+    if (value === 'true') return true;
+    if (value === 'false') return false;
+    throw new Error('--method-aliases requiere true o false');
 }
 
 function readConfig() {
@@ -126,7 +150,16 @@ async function loadGTPL() {
     if (!GTPL?.jit?.GCode) {
         throw new Error('❌ No se pudo cargar GTPL. Asegúrate de hacer `npm link gtpl`.');
     }
-    console.log('✓ GTPL cargado correctamente');
+    if (TEMPLATE_COMPILER === 'optimized' && typeof GTPL.jit.GCodeOptimized !== 'function') {
+        throw new Error('El compilador optimized requiere GTPL 2.0 o posterior');
+    }
+    console.log(`✓ GTPL cargado correctamente (compiler=${TEMPLATE_COMPILER}, methodAliases=${METHOD_ALIASES})`);
+}
+
+function compileTemplate(html) {
+    return TEMPLATE_COMPILER === 'optimized'
+        ? GTPL.jit.GCodeOptimized(html, { methodAliases: METHOD_ALIASES })
+        : GTPL.jit.GCode(html);
 }
 
 // -----------------------------------------------------
@@ -193,7 +226,7 @@ function extractComponentInfo(filePath, code) {
                             }
                         }
                     }
-                    if (templatePath || styleUrls.length || inlineStyles.length) {
+                    if (templatePath || templateHtml != null || styleUrls.length || inlineStyles.length) {
                         const className = node.name?.text || 'UnnamedComponent';
                         result.push({
                             className,
@@ -369,10 +402,10 @@ async function processFile(filePath) {
         let compiledTemplate = 'null';
         // 🧱 Compilar template (HTML → GCode)
         if (info.templateHtml != null) {
-            compiledTemplate = await GTPL.jit.GCode(info.templateHtml);
+            compiledTemplate = await compileTemplate(info.templateHtml);
         } else if (absTemplate && fs.existsSync(absTemplate)) {
             const html = fs.readFileSync(absTemplate, 'utf8');
-            compiledTemplate = await GTPL.jit.GCode(html);
+            compiledTemplate = await compileTemplate(html);
             // 🚫 No borrar el template original en src
             // ✅ Pero sí borrar la copia en src-aot si existe
             const aotTemplate = toAotPath(absTemplate);

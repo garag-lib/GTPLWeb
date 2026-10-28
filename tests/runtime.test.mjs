@@ -40,7 +40,7 @@ const uniqueTag = (prefix) =>
   `${prefix}-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
 
 async function attachAotTemplate(ControllerClass, html) {
-  const compiled = await GTPL.jit.GCode(html);
+  const compiled = await GTPL.jit.GCodeOptimized(html, { methodAliases: true });
   const factory = GTPL.jit.GCompile(compiled);
   Object.defineProperty(ControllerClass, "__gtemplate__", {
     value: factory,
@@ -108,6 +108,37 @@ test("AOT web component with light DOM defers render until connected", async () 
   await wait(20);
 
   assert.ok(host.querySelector("[data-rendered='ok']"), "Expected rendered content after connect");
+});
+
+test("g-class owns applied classes across replaced arrays and batched updates", async () => {
+  const tag = uniqueTag('g-class-aot');
+  class ClassState extends GTplComponentBase {
+    classes = ['status', 'ready'];
+  }
+  await attachAotTemplate(ClassState, '<p g-class="{{ classes }}">Status</p>');
+  Component({ tag, template: '<p g-class="{{ classes }}">Status</p>' })(ClassState);
+  const host = document.createElement(tag);
+  document.body.appendChild(host);
+  try {
+    await wait(20);
+    const controller = getControllerFromComponent(host), paragraph = host.querySelector('p');
+    assert.equal(paragraph.className, 'status ready');
+    controller.classes = ['status', 'paused'];
+    controller.classes = ['status', 'final'];
+    await wait();
+    assert.equal(paragraph.className, 'status final');
+    controller.classes.push('extra');
+    await wait();
+    assert.equal(paragraph.className, 'status final extra');
+    controller.classes = [];
+    await wait();
+    assert.equal(paragraph.getAttribute('class'), null);
+    controller.classes = 'single';
+    await wait();
+    assert.equal(paragraph.className, 'single');
+  } finally {
+    host.remove();
+  }
 });
 
 test("GWatcher calls onDisconnect for injected controller on detach", async () => {

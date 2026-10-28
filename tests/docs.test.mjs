@@ -107,12 +107,13 @@ test('g-class, namespaced bus and shadow counter use framework bindings', async 
     const classes = document.querySelector('docs-class-badge');
     click(classes, 'Toggle status');
     await wait();
-    assert.ok(classes.querySelector('.status-paused'));
+    assert.ok(classes.querySelector('.status-paused'), errors.join('\n'));
     const sender = document.querySelector('docs-bus-sender');
     input(dom, sender.querySelector('input'), 'Message from test');
     click(sender, 'Publish message');
     await wait();
-    assert.equal(document.querySelector('[data-message-count]').textContent, '1');
+    assert.equal(document.querySelector('[data-message-count]').textContent, '1',
+        JSON.stringify({ errors, receiver: document.querySelector('docs-bus-receiver').innerHTML }));
     assert.match(document.querySelector('docs-bus-receiver li').textContent, /Message from test/);
     const shadow = document.querySelector('docs-shadow-card').shadowRoot;
     click(shadow, 'Shadow counter +1');

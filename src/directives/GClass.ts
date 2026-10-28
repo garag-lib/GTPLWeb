@@ -15,7 +15,8 @@ export class GClass extends GDirectiveBase {
 
     setAttribute(name: string, value: any) {
         const ele = this.ele as HTMLElement;
-        this.cls = Array.isArray(value) ? value : String(value || '').split(/\s+/);
+        // Remember the applied classes without retaining a mutable/revocable proxy.
+        this.cls = Array.isArray(value) ? Array.from(value) : String(value || '').split(/\s+/);
         if (this.cls.length) ele.setAttribute('class', this.cls.join(' '));
         else ele.removeAttribute('class');
     }

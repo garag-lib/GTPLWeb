@@ -240,6 +240,19 @@ Main options:
 - `--static-out-dir`
 - `--public-out-dir`
 - `--no-static-copy`
+- `--compiler reference|optimized` (default: `reference`)
+- `--method-aliases true|false` (default: `false`; requires `optimized`)
+
+CLI options override `gtplweb.compiler` and `gtplweb.methodAliases` in the app's
+`package.json`. GTPLWeb 1.1 requires GTPL 2.0.1 or later. To generate
+imperative AOT templates with short method aliases:
+
+```bash
+npx gtpl-aot --compiler optimized --method-aliases true
+```
+
+Aliases reduce generated source size; they do not guarantee faster rendering.
+Both backends generate AOT functions without runtime compilation.
 
 ### `gtpl-app-build`
 
@@ -271,7 +284,9 @@ Optional:
     "aotDir": "src-aot",
     "outDir": "www/dist",
     "entry": "src-aot/main.ts",
-    "i18nDir": "src/i18n"
+    "i18nDir": "src/i18n",
+    "compiler": "optimized",
+    "methodAliases": true
   }
 }
 ```
