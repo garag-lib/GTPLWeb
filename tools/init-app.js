@@ -4,8 +4,9 @@ import fs from 'fs';
 import path from 'path';
 import readline from 'readline/promises';
 import { stdin as input, stdout as output } from 'process';
+import { fileURLToPath, pathToFileURL } from 'url';
 
-const repoRoot = path.resolve(path.dirname(new URL(import.meta.url).pathname), '..');
+const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 
 const cli = parseArgs(process.argv.slice(2));
 const targetDir = path.resolve(process.cwd(), cli.targetDir || '.');
@@ -29,24 +30,31 @@ const vars = {
 };
 const starterBundleFiles = await loadStarterBundleFiles();
 
+for (const file of starterBundleFiles) {
+  const fullPath = path.join(targetDir, file.path);
+  checkDirectoryAncestors(path.dirname(fullPath));
+  if (fs.lstatSync(fullPath, { throwIfNoEntry: false })) {
+    console.error(`Refusing to overwrite ${path.relative(process.cwd(), fullPath)}`);
+    process.exit(1);
+  }
+}
+
 fs.mkdirSync(targetDir, { recursive: true });
 
 for (const file of starterBundleFiles) {
   const relPath = file.path;
   const fullPath = path.join(targetDir, relPath);
-  if (fs.existsSync(fullPath)) {
-    console.error(`Refusing to overwrite ${path.relative(process.cwd(), fullPath)}`);
-    process.exit(1);
-  }
-
   let content = Buffer.from(file.content, 'base64').toString('utf8');
-  content = applyTemplate(content, vars);
-
   if (relPath === 'package.json') {
-    const pkg = JSON.parse(content);
+    const pkg = JSON.parse(content, (_key, value) => typeof value === 'string' ? applyTemplate(value, vars) : value);
     if (!metadata.author) delete pkg.author;
     if (!copyrightLine) delete pkg.copyright;
     content = JSON.stringify(pkg, null, 2) + '\n';
+  } else {
+    const replacements = relPath.endsWith('.html')
+      ? Object.fromEntries(Object.entries(vars).map(([key, value]) => [key, escapeHtml(value)]))
+      : vars;
+    content = applyTemplate(content, replacements);
   }
 
   if (relPath === 'README.md') {
@@ -67,10 +75,36 @@ console.log(`GTPLWeb app created in ${path.relative(process.cwd(), targetDir) ||
 console.log('Starter scaffold loaded from tools/starter-template bundle');
 console.log('Next: npm install && npm run build:dev && npm run server');
 
+function checkDirectoryAncestors(directory) {
+  let current = directory;
+  while (true) {
+    let entry;
+    try {
+      entry = fs.lstatSync(current, { throwIfNoEntry: false });
+    } catch (error) {
+      // A file higher in the path can make a descendant lookup fail first.
+      if (error.code !== 'ENOTDIR') throw error;
+    }
+    if (entry) {
+      let isDirectory = entry.isDirectory();
+      if (entry.isSymbolicLink()) {
+        isDirectory = fs.statSync(current, { throwIfNoEntry: false })?.isDirectory() ?? false;
+      }
+      if (!isDirectory) {
+        console.error(`Cannot create starter files: ${path.relative(process.cwd(), current) || '.'} is not a directory`);
+        process.exit(1);
+      }
+    }
+    const parent = path.dirname(current);
+    if (parent === current) return;
+    current = parent;
+  }
+}
+
 async function loadStarterBundleFiles() {
   const generatedFile = path.join(repoRoot, 'tools', 'starter-bundle.generated.js');
   if (fs.existsSync(generatedFile)) {
-    const mod = await import(new URL(generatedFile, 'file://').href);
+    const mod = await import(pathToFileURL(generatedFile).href);
     return mod.STARTER_BUNDLE_FILES;
   }
 
@@ -103,6 +137,12 @@ function applyTemplate(inputText, replacements) {
     text = text.split(token).join(String(value ?? ''));
   }
   return text;
+}
+
+function escapeHtml(value) {
+  return String(value).replace(/[&<>"']/g, character => ({
+    '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
+  })[character]);
 }
 
 function parseArgs(argv) {

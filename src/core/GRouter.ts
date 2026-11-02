@@ -199,6 +199,7 @@ export class GRouter {
   private defaultRoute?: GURL;
   private historyCache: Map<string, GMatch> = new Map();
   private active: GMatch | null = null;
+  private navigationSequence = 0;
 
   private suppressNextHashChange = false;
 
@@ -318,20 +319,21 @@ export class GRouter {
         paramKeys.push(name);
         if (isOptional) optional.add(name);
 
-        let frag = route.regex?.[name] ?? "([^/]+)";
-        // si es opcional y el fragmento no tiene ?, lo hacemos opcional
-        if (isOptional && !/\?\)$/.test(frag)) {
-          // envolver en grupo no capturante si no lo está
-          if (!/^\(.*\)$/.test(frag)) {
-            frag = `(${frag})`;
-          }
-          frag = `${frag}?`;
+        const frag = route.regex?.[name] ?? "[^/]+";
+        // Named outer captures keep custom regex groups from shifting later parameters.
+        const capture = `(?<__gtpl_${paramKeys.length - 1}>${frag})`;
+        if (isOptional && pattern[start - 1] === "/") {
+          built = built.slice(0, -1) + `(?:/${capture})?`;
+        } else {
+          built += capture + (isOptional ? "?" : "");
         }
-        built += frag;
         cursor = start + raw.length;
       }
       built += this.escapeRegexLiteral(pattern.slice(cursor));
     }
+
+    // A path consisting entirely of optional segments still has the root slash.
+    if (new RegExp(`^(?:${built})$`).test("")) built = `(?:${built}|/)`;
 
     // Anclaje condicional al final: si la ruta es hoja y la opción está activa
     // (para evitar sobre-matching en hojas).
@@ -390,7 +392,11 @@ export class GRouter {
     if (!route.paramKeys || !route.paramKeys.length) return out;
     let idx = 1;
     for (const key of route.paramKeys) {
-      const val = matchArray[idx++];
+      const group = `__gtpl_${idx - 1}`;
+      const val = matchArray.groups && group in matchArray.groups
+        ? matchArray.groups[group]
+        : matchArray[idx];
+      idx++;
       if (val != null) out[key] = val;
     }
     return out;
@@ -526,6 +532,7 @@ export class GRouter {
       }
       return String(val);
     });
+    url = url.replace(/\*([A-Za-z0-9_]+)/g, (_m, key: string) => String(params?.[key] ?? ""));
 
     // colapsar dobles barras y normalizar + eliminar trailing slash salvo raíz
     url = url.replace(/\/{2,}/g, "/");
@@ -673,6 +680,12 @@ export class GRouter {
     }
   }
 
+  private retainDataFor(path: string | null) {
+    for (const key of this.transientData.keys()) {
+      if (key !== path) this.transientData.delete(key);
+    }
+  }
+
   /** Replace en el historial (compat) */
   replace(idOrPath: string, params?: Record<string, any>, query?: Record<string, any>) {
     if (idOrPath.startsWith("/")) {
@@ -749,7 +762,8 @@ export class GRouter {
   }
 
   private async onLocationChange(ev: { newURL?: string; oldURL?: string; synthetic?: boolean; query?: Record<string, string> }) {
-
+    const sequence = ++this.navigationSequence;
+    const isCurrent = () => sequence === this.navigationSequence;
     const path = this.currentPathFromLocation();
     const query = ev.query ?? this.currentQueryFromLocation() ?? null;
     const isHistory = this.options.mode === "history";
@@ -762,6 +776,7 @@ export class GRouter {
 
     if (!match) {
       const res = await this.resolvePath(path, this.urls);
+      if (!isCurrent()) return;
       if (res) {
         if (query) res.query = { ...query };
         else delete (res as any).query;
@@ -776,6 +791,7 @@ export class GRouter {
         // === 🧠 HOOK: beforeChange (solo antes de cambiar de ruta)
         if (this.beforeChange) {
           const ok = await this.beforeChange(prev ?? null, res);
+          if (!isCurrent()) return;
           if (ok === false) {
             this.log("Navigation cancelled by beforeChange");
 
@@ -801,6 +817,7 @@ export class GRouter {
 
         // Guardar en active la vista real
         this.active = viewRoute;
+        this.retainDataFor(viewRoute.fullPath);
 
         // Guardar en caché usando el path de la vista real
         const cacheKey = viewRoute.fullPath;
@@ -826,6 +843,7 @@ export class GRouter {
         return;
       } else {
         this.active = null;
+        this.retainDataFor(null);
         try {
           this.cb?.("notfound", null, prev ?? null);
         } catch (e) {
@@ -836,11 +854,11 @@ export class GRouter {
       }
     } else {
       // match desde caché
-      if (query) match.query = { ...query };
-      else delete (match as any).query;
+      match = { ...match, params: { ...match.params }, query: query ? { ...query } : undefined };
 
       const routeDef = this.ids.get(match.id)!;
       const mw = await this.runMiddlewareChain(routeDef, match);
+      if (!isCurrent()) return;
       if (!mw.ok) {
         const redirectTo = match.redirect || mw.redirect;
         if (redirectTo) {
@@ -848,6 +866,7 @@ export class GRouter {
           return;
         }
         this.active = null;
+        this.retainDataFor(null);
         try {
           this.cb?.("notfound", null, prev ?? null);
         } catch (e) {
@@ -859,6 +878,7 @@ export class GRouter {
       // === 🧠 HOOK: beforeChange (para history/back)
       if (this.beforeChange) {
         const ok = await this.beforeChange(prev ?? null, match);
+        if (!isCurrent()) return;
         if (ok === false) {
           this.log("Navigation cancelled by beforeChange");
 
@@ -881,6 +901,7 @@ export class GRouter {
       }
 
       this.active = match;
+      this.retainDataFor(match.fullPath);
 
       try {
         this.cb?.("history", this.active, prev ?? null);
@@ -964,10 +985,14 @@ export class GRouter {
 
   /** Liberar listeners y cachés */
   destroy() {
+    this.navigationSequence++;
     if (this.hashchangebind) window.removeEventListener("hashchange", this.hashchangebind);
     if (this.popstatebind) window.removeEventListener("popstate", this.popstatebind as any);
     this.historyCache.clear();
+    this.transientData.clear();
     this.cb = undefined;
+    this.beforeChange = undefined;
+    this.afterChange = undefined;
     this.active = null;
   }
 
@@ -1003,7 +1028,7 @@ export class GRouter {
 
   /**
    * Devuelve el GMatch que resultaría de navegar a un path dado,
-   * pero si existe en caché se devuelve directamente el objeto cacheado.
+   * usando una copia cuando la ruta ya existe en caché.
    * NO modifica el router ni dispara eventos.
    */
   public async matchPath(pathOrUrl: string): Promise<GMatch | null> {
@@ -1013,27 +1038,22 @@ export class GRouter {
     // 🔎 1. Buscar en la caché del historial
     const cached = this.historyCache.get(norm);
     if (cached) {
-      // actualizar query si viene en pathOrUrl
-      if (queryPart) {
-        const q = this.parseQueryString(queryPart);
-        if (q) cached.query = q;
-        else delete (cached as any).query;
+      const match: GMatch = { ...cached, params: { ...cached.params } };
+      const query = this.parseQueryString(queryPart ?? "");
+      if (query) match.query = query;
+      else delete match.query;
+      const routeDef = this.ids.get(match.id)!;
+      const mw = await this.runMiddlewareChain(routeDef, match);
+      if (!mw.ok) {
+        if (mw.redirect) return { ...match, redirect: mw.redirect };
+        return null;
       }
-      return cached;
+      return match;
     }
 
     // 🔧 2. Resolver ruta si no está en caché
     const match = await this.resolvePath(norm, this.urls);
     if (!match) return null;
-
-    // ejecutar middlewares (igual que navegación)
-    const routeDef = this.ids.get(match.id)!;
-    const mw = await this.runMiddlewareChain(routeDef, match);
-
-    if (!mw.ok) {
-      if (mw.redirect) return { ...match, redirect: mw.redirect };
-      return null;
-    }
 
     // aplicar query manualmente
     if (queryPart) {

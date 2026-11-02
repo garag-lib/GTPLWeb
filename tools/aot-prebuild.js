@@ -18,6 +18,8 @@ import { JSDOM } from 'jsdom';
 import ts from 'typescript';
 import { glob } from 'glob';
 import * as sass from 'sass'
+import { createHash } from 'node:crypto';
+import { containsPath } from './build-paths.js';
 
 // -----------------------------------------------------
 // 🧭 Inicialización de rutas
@@ -49,8 +51,17 @@ const IGNORE_PATTERNS = [
     ...(config.aotIgnore || [])
 ];
 
+// The compiler removes OUT_DIR before scanning SRC_DIR.
+if (containsPath(OUT_DIR, SRC_DIR) || containsPath(SRC_DIR, OUT_DIR)) {
+    throw new Error('El directorio AOT debe estar separado del directorio de fuentes');
+}
+if (STATIC_OUT_DIR && (containsPath(STATIC_OUT_DIR, SRC_DIR) || containsPath(SRC_DIR, STATIC_OUT_DIR))) {
+    throw new Error('El directorio de archivos estáticos debe estar separado del directorio de fuentes');
+}
+
 let GTPL;
 let GLOBAL_STYLES = []; // 🧩 acumulador para styleMode: 'global'
+const runtimeTemplates = new Set();
 
 function parseArgs(argv) {
     const parsed = {};
@@ -105,7 +116,15 @@ function readTsconfigOutDir() {
 }
 
 function toAotPath(srcPath) {
-    return path.join(OUT_DIR, path.relative(SRC_DIR, srcPath));
+    return path.join(OUT_DIR, assetRelativePath(srcPath));
+}
+
+function assetRelativePath(srcPath) {
+    const relative = path.relative(SRC_DIR, srcPath).replace(/\\/g, '/');
+    if (relative !== '..' && !relative.startsWith('../') && !path.isAbsolute(relative)) return relative;
+    // External shared assets must never emit or delete files outside OUT_DIR.
+    const key = createHash('sha256').update(relative).digest('hex').slice(0, 12);
+    return `__external__/${key}/${path.basename(srcPath)}`;
 }
 
 function normalizePublicOutDir(value) {
@@ -114,7 +133,7 @@ function normalizePublicOutDir(value) {
 }
 
 function toPublicAssetPath(absAssetPath) {
-    const rel = path.relative(SRC_DIR, absAssetPath).replace(/\\/g, '/');
+    const rel = assetRelativePath(absAssetPath);
     return `${PUBLIC_OUT_DIR}/${rel}`;
 }
 
@@ -193,20 +212,26 @@ function extractComponentInfo(filePath, code) {
                     let styleMode = 'global'; // valor por defecto
                     if (arg && ts.isObjectLiteralExpression(arg)) {
                         for (const prop of arg.properties) {
-                            const name = prop.name?.getText(source);
+                            const name = prop.name && (ts.isIdentifier(prop.name) || ts.isStringLiteral(prop.name))
+                                ? prop.name.text : prop.name?.getText(source);
                             const value = prop.initializer;
+                            if (!value) continue;
                             if (name === 'aot' && (value.kind === ts.SyntaxKind.TrueKeyword || value.kind === ts.SyntaxKind.FalseKeyword))
                                 aot = value.kind === ts.SyntaxKind.TrueKeyword;
-                            if (name === 'styleMode' && ts.isStringLiteral(value))
+                            if (name === 'styleMode' && ts.isStringLiteralLike(value))
                                 styleMode = value.text;
-                            if ((name === 'template' || name === 'templateUrl') && ts.isStringLiteral(value)) {
+                            if ((name === 'template' || name === 'templateUrl') && ts.isStringLiteralLike(value)) {
                                 if (name === 'template' && looksLikeHtml(value.text))
                                     templateHtml = value.text;
                                 else
                                     templatePath = value.text;
                             }
-                            if ((name === 'style') && (ts.isStringLiteral(value) || ts.isArrayLiteralExpression(value))) {
-                                if (ts.isStringLiteral(value)) {
+                            if (name === 'template' && ts.isObjectLiteralExpression(value)) {
+                                const html = value.properties.find(p => p.name?.getText(source).replace(/^['"]|['"]$/g, '') === 'html');
+                                if (html?.initializer && ts.isStringLiteralLike(html.initializer)) templateHtml = html.initializer.text;
+                            }
+                            if ((name === 'style') && (ts.isStringLiteralLike(value) || ts.isArrayLiteralExpression(value))) {
+                                if (ts.isStringLiteralLike(value)) {
                                     if (value.text.trim().endsWith('.css') || value.text.trim().endsWith('.scss') || value.text.trim().endsWith('.sass')) {
                                         styleUrls.push(value.text);
                                     } else {
@@ -214,7 +239,7 @@ function extractComponentInfo(filePath, code) {
                                     }
                                 } else {
                                     value.elements.forEach(e => {
-                                        if (ts.isStringLiteral(e)) {
+                                        if (ts.isStringLiteralLike(e)) {
                                             if (e.text.trim().endsWith('.css') || e.text.trim().endsWith('.scss') || e.text.trim().endsWith('.sass')) {
                                                 styleUrls.push(e.text);
                                             } else {
@@ -253,14 +278,22 @@ function extractComponentInfo(filePath, code) {
 // -----------------------------------------------------
 function injectCompiledAssets(code, className, compiledTemplate, compiledStyles, urlStyles) {
     let output = code;
-
-    // Asegura import de GTPL:
-    if (!code.includes("import GTPL from '@mpeliz/gtpl'")) {
-        const importBlock = /import[^;]+;/g;
-        const matches = code.match(importBlock);
-        output = matches && matches.length
-            ? code.replace(matches[matches.length - 1], `${matches[matches.length - 1]}\nimport GTPL from '@mpeliz/gtpl';`)
-            : `import GTPL from '@mpeliz/gtpl';\n` + code;
+    const source = ts.createSourceFile('component.ts', code, ts.ScriptTarget.Latest, true, ts.ScriptKind.TS);
+    const runtimeImport = source.statements.find(node => ts.isImportDeclaration(node)
+        && ts.isStringLiteral(node.moduleSpecifier) && node.moduleSpecifier.text === '@mpeliz/gtpl'
+        && !node.importClause?.isTypeOnly && node.importClause?.name);
+    let runtimeName = runtimeImport?.importClause.name.text;
+    if (!runtimeName) {
+        const identifiers = new Set();
+        const collect = node => {
+            if (ts.isIdentifier(node)) identifiers.add(node.text);
+            ts.forEachChild(node, collect);
+        };
+        collect(source);
+        runtimeName = '__GTPL_AOT';
+        while (identifiers.has(runtimeName)) runtimeName += '_';
+        const insertion = source.statements[0]?.getStart(source) ?? code.length;
+        output = code.slice(0, insertion) + `import ${runtimeName} from '@mpeliz/gtpl';\n` + code.slice(insertion);
     }
 
     // La expr del template compilado (igual que antes)
@@ -268,7 +301,7 @@ function injectCompiledAssets(code, className, compiledTemplate, compiledStyles,
       const g = GTPL.GGenerator;
       // @ts-ignore
       return ${compiledTemplate};
-    })(GTPL)`;
+    })(${runtimeName})`;
 
     // Construye definiciones con defineProperty (no-writable, no-configurable, no-enumerable)
     const defs = [];
@@ -322,26 +355,18 @@ function injectCompiledAssets(code, className, compiledTemplate, compiledStyles,
       }
     `;
 
-    // Inserta tras la llave de apertura de la clase
-    const classRegex = new RegExp(
-        `((?:export\\s+(?:default\\s+)?)?class\\s+${className}` +
-        `(?:\\s+extends\\s+[\\w$.]+(?:\\s*<[^>]*>)?)?` +
-        `(?:\\s+implements\\s+[\\w$,\\s]+)?` +
-        `\\s*\\{)`,
-        'm'
-    );
-
-    let injected = false;
-    output = output.replace(classRegex, (_m, p1) => {
-        injected = true;
-        return `${p1}\n${propertyBlock}\n`;
-    });
-
-    if (!injected) {
+    const updated = ts.createSourceFile('component.ts', output, ts.ScriptTarget.Latest, true, ts.ScriptKind.TS);
+    let classNode;
+    const findClass = node => {
+        if (ts.isClassDeclaration(node) && node.name?.text === className) classNode ??= node;
+        ts.forEachChild(node, findClass);
+    };
+    findClass(updated);
+    if (!classNode) {
         throw new Error(`No se pudo inyectar AOT en la clase "${className}". Verifica que la clase exista en el archivo.`);
     }
-
-    return output;
+    const insertion = classNode.members.pos;
+    return output.slice(0, insertion) + `\n${propertyBlock}\n` + output.slice(insertion);
 }
 
 
@@ -355,15 +380,13 @@ function compileStyleFile(absPath) {
             const result = sass.compile(absPath, { style: 'expanded' });
             return result.css;
         } catch (err) {
-            console.error(`❌ Error compilando ${path.relative(SRC_DIR, absPath)}: ${err.message}`);
-            return '';
+            throw new Error(`Error compilando ${path.relative(SRC_DIR, absPath)}: ${err.message}`, { cause: err });
         }
     }
     try {
         return fs.readFileSync(absPath, 'utf8');
     } catch (err) {
-        console.error(`⚠️  No se pudo leer ${absPath}: ${err.message}`);
-        return '';
+        throw new Error(`No se pudo leer ${absPath}: ${err.message}`, { cause: err });
     }
 }
 
@@ -385,11 +408,15 @@ async function processFile(filePath) {
         if (info.aot === false) {
             if (info.templatePath) {
                 const absTemplate = path.resolve(path.dirname(filePath), info.templatePath);
+                copyFilePreservingStructure(absTemplate);
                 const runtimeTemplatePath = toPublicAssetPath(absTemplate);
                 modifiedCode = modifiedCode.replaceAll(info.templatePath, runtimeTemplatePath);
             }
             for (const stylePath of info.styleUrls || []) {
                 const absStyle = path.resolve(path.dirname(filePath), stylePath);
+                const css = compileStyleFile(absStyle);
+                emitCssFile(absStyle, css);
+                if (info.styleMode === 'global') GLOBAL_STYLES.push(css);
                 const runtimeStylePath = toPublicAssetPath(absStyle).replace(/\.(scss|sass)$/i, '.css');
                 modifiedCode = modifiedCode.replaceAll(stylePath, runtimeStylePath);
             }
@@ -409,7 +436,7 @@ async function processFile(filePath) {
             // 🚫 No borrar el template original en src
             // ✅ Pero sí borrar la copia en src-aot si existe
             const aotTemplate = toAotPath(absTemplate);
-            if (fs.existsSync(aotTemplate)) {
+            if (!runtimeTemplates.has(absTemplate) && fs.existsSync(aotTemplate)) {
                 try {
                     fs.unlinkSync(aotTemplate);
                     console.log(`🗑️  Eliminado template inyectado (AOT): ${path.relative(OUT_DIR, aotTemplate)}`);
@@ -420,7 +447,7 @@ async function processFile(filePath) {
                 console.warn(`⚠️  No he encontrado el template para eliminar: ${aotTemplate}`);
             }
         } else if (info.templatePath) {
-            console.warn(`⚠️  Template no encontrado para ${info.className}: ${info.templatePath}`);
+            throw new Error(`Template no encontrado para ${info.className}: ${info.templatePath}`);
         }
         //---
         // 🎨 Compilar estilos (CSS / SCSS / SASS)
@@ -431,7 +458,7 @@ async function processFile(filePath) {
 
             const abs = path.resolve(path.dirname(filePath), s);
 
-            if (!fs.existsSync(abs)) continue;
+            if (!fs.existsSync(abs)) throw new Error(`Estilo no encontrado para ${info.className}: ${s}`);
 
             const css = compileStyleFile(abs);
 
@@ -475,7 +502,7 @@ async function processFile(filePath) {
             const relDir = path.dirname(rel);
             const base = path.basename(rel, '.ts').toLowerCase();
             const cname = String(info.className || 'component').toLowerCase();
-            const abs = path.join(OUT_DIR, relDir, `${base}-${cname}-inline.css`);
+            const abs = path.join(SRC_DIR, relDir, `${base}-${cname}-inline.css`);
 
             switch (info.styleMode) {
                 case 'global':
@@ -500,17 +527,8 @@ async function processFile(filePath) {
 
         if (info.styleUrlsGenerated) {
             info.styleUrlsGenerated = [...new Set(info.styleUrlsGenerated)];
-            // 🧭 Ajustar rutas a ser relativas al raíz del código fuente (SRC_DIR)
-            info.styleUrlsGenerated = info.styleUrlsGenerated.map(cssPath => {
-                let clean = cssPath;
-                if (path.isAbsolute(cssPath)) {
-                    const rel = path.relative(SRC_DIR, cssPath);
-                    clean = rel.replace(/\\/g, '/');
-                } else {
-                    clean = cssPath.replace(/^(\.\/|\/)+/, '');
-                }
-                return './' + clean.replace(/\\/g, '/');
-            });
+            info.styleUrlsGenerated = info.styleUrlsGenerated.map(cssPath =>
+                `${PUBLIC_OUT_DIR}/${cssPath.replace(/\\/g, '/')}`);
         }
 
         modifiedCode = injectCompiledAssets(
@@ -531,7 +549,7 @@ async function processFile(filePath) {
 }
 
 function emitCssFile(absInput, compiledCss) {
-    const rel = path.relative(SRC_DIR, absInput);
+    const rel = assetRelativePath(absInput);
     const outPath = path.join(OUT_DIR, rel.replace(/\.(scss|sass)$/i, '.css'));
     fs.mkdirSync(path.dirname(outPath), { recursive: true });
     fs.writeFileSync(outPath, compiledCss, 'utf8');
@@ -542,8 +560,7 @@ function emitCssFile(absInput, compiledCss) {
 // 📁 Copiar archivos manteniendo estructura
 // -----------------------------------------------------
 function copyFilePreservingStructure(srcFile) {
-    const relPath = path.relative(SRC_DIR, srcFile);
-    const destPath = path.join(OUT_DIR, relPath);
+    const destPath = toAotPath(srcFile);
     fs.mkdirSync(path.dirname(destPath), { recursive: true });
     fs.copyFileSync(srcFile, destPath);
 }
@@ -590,6 +607,12 @@ async function main() {
     }
 
     for (const tsFile of tsFiles) {
+        for (const info of extractComponentInfo(tsFile, fs.readFileSync(tsFile, 'utf8'))) {
+            if (info.aot === false && info.templatePath)
+                runtimeTemplates.add(path.resolve(path.dirname(tsFile), info.templatePath));
+        }
+    }
+    for (const tsFile of tsFiles) {
         const ok = await processFile(tsFile);
         if (ok) processed++;
     }
@@ -633,7 +656,7 @@ async function main() {
 
         console.log(`📤 Copiados ${cssAndHtml.length} archivos CSS/HTML → ${path.relative(process.cwd(), STATIC_OUT_DIR)}`);
     } catch (e) {
-        console.warn(`⚠️  No se pudieron copiar CSS/HTML generados: ${e.message}`);
+        throw new Error(`No se pudieron copiar CSS/HTML generados: ${e.message}`, { cause: e });
     }
 
 }

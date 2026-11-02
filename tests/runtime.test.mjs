@@ -31,7 +31,7 @@ globalThis.cancelAnimationFrame =
   dom.window.cancelAnimationFrame?.bind(dom.window) ??
   ((id) => clearTimeout(id));
 
-const { Animations, Component, GTplComponentBase, getControllerFromComponent, GWatcher } = await import("../dist/gtplweb.esm.js");
+const { Animations, Component, GTplComponentBase, AppGTplComponent, GBus, getControllerFromComponent, GWatcher } = await import("../dist/gtplweb.esm.js");
 const { default: GTPL } = await import("@mpeliz/gtpl");
 
 const wait = (ms = 0) => new Promise((resolve) => setTimeout(resolve, ms));
@@ -260,4 +260,124 @@ test("Animations keeps pointer lock when an older overlapping transition ends", 
   element.dispatchEvent(new Event("transitionend"));
   await second;
   assert.equal(element.style.pointerEvents, "all");
+});
+
+test('non-web component forwards connect/disconnect hooks to its controller', async () => {
+  const calls = [];
+  class Plain extends GTplComponentBase {
+    onConnect() { calls.push('connect'); }
+    onDisconnect() { calls.push('disconnect'); }
+  }
+  await attachAotTemplate(Plain, '<p>plain</p>');
+  Component({ tag: uniqueTag('g-plain-hooks'), asWebComponent: false })(Plain);
+  const host = new Plain.__gcomponent__();
+  const controller = getControllerFromComponent(host);
+  document.body.append(host);
+  host.remove();
+  assert.deepEqual(calls, ['connect', 'disconnect']);
+  controller.destroy();
+});
+
+test('g-component can replace non-web components on its existing host', async () => {
+  const firstTag = uniqueTag('g-first-plain'), secondTag = uniqueTag('g-second-plain');
+  let destroyed = 0;
+  class First extends GTplComponentBase { onDestroy() { destroyed++; } }
+  class Second extends GTplComponentBase {}
+  await attachAotTemplate(First, '<span>first</span>');
+  await attachAotTemplate(Second, '<span>second</span>');
+  Component({ tag: firstTag, asWebComponent: false })(First);
+  Component({ tag: secondTag, asWebComponent: false })(Second);
+  class Parent extends GTplComponentBase { selected = firstTag; }
+  await attachAotTemplate(Parent, '<section g-component="{{selected}}"></section>');
+  Component({ tag: uniqueTag('g-plain-switch') })(Parent);
+  const host = new Parent.__gcomponent__();
+  document.body.append(host);
+  const controller = getControllerFromComponent(host);
+  try {
+    await wait();
+    assert.equal(host.querySelector('span')?.textContent, 'first');
+    controller.selected = secondTag;
+    await wait();
+    assert.equal(host.querySelector('span')?.textContent, 'second');
+    assert.equal(destroyed, 1);
+  } finally { controller.destroy(); }
+});
+
+test('destroy releases app route subscriptions and is idempotent', async () => {
+  const baseline = GBus.listenerCount('router');
+  let changes = 0;
+  class App extends AppGTplComponent { onRouteChange() { changes++; } }
+  await attachAotTemplate(App, '<p>app</p>');
+  Component({ tag: uniqueTag('g-app-cleanup') })(App);
+  for (let i = 0; i < 10; i++) {
+    const host = new App.__gcomponent__();
+    document.body.append(host);
+    const controller = getControllerFromComponent(host);
+    controller.destroy();
+    controller.destroy();
+    assert.equal(getControllerFromComponent(host), null);
+  }
+  assert.equal(GBus.listenerCount('router'), baseline);
+  await GBus.emit('urlChanged', { state: 'new', current: null, prev: null }, 'router');
+  assert.equal(changes, 0);
+});
+
+test('parent destruction runs nested component cleanup, including shadow roots', async () => {
+  let destroyed = 0;
+  class Child extends GTplComponentBase { onDestroy() { destroyed++; } }
+  const childTag = uniqueTag('g-owned-child');
+  await attachAotTemplate(Child, '<span>child</span>');
+  Component({ tag: childTag })(Child);
+  class Parent extends GTplComponentBase {}
+  await attachAotTemplate(Parent, `<section><${childTag}></${childTag}></section>`);
+  Component({ tag: uniqueTag('g-owned-parent'), shadow: true })(Parent);
+  const host = new Parent.__gcomponent__();
+  document.body.append(host);
+  const controller = getControllerFromComponent(host);
+  controller.destroy();
+  controller.destroy();
+  assert.equal(destroyed, 1);
+});
+
+test('throwing child cleanup does not prevent siblings or parent from being destroyed', async () => {
+  let siblingDestroyed = 0;
+  class Broken extends GTplComponentBase { onDestroy() { throw new Error('expected child cleanup error'); } }
+  class Sibling extends GTplComponentBase { onDestroy() { siblingDestroyed++; } }
+  const brokenTag = uniqueTag('g-broken-child'), siblingTag = uniqueTag('g-sibling-child');
+  await attachAotTemplate(Broken, '<b>broken</b>');
+  await attachAotTemplate(Sibling, '<b>sibling</b>');
+  Component({ tag: brokenTag })(Broken);
+  Component({ tag: siblingTag })(Sibling);
+  class Parent extends GTplComponentBase {}
+  await attachAotTemplate(Parent, `<${brokenTag}></${brokenTag}><${siblingTag}></${siblingTag}>`);
+  Component({ tag: uniqueTag('g-parent-cleanup-error') })(Parent);
+  const host = new Parent.__gcomponent__();
+  document.body.append(host);
+  const controller = getControllerFromComponent(host);
+  const error = console.error;
+  const logged = [];
+  console.error = value => logged.push(value);
+  try { controller.destroy(); } finally { console.error = error; }
+  assert.equal(siblingDestroyed, 1);
+  assert.equal(host.isConnected, false);
+  assert.equal(getControllerFromComponent(host), null);
+  assert.equal(logged.length, 1);
+  assert.match(logged[0].message, /expected child cleanup error/);
+});
+
+test('destroying a non-web component in onInit does not append a watcher afterwards', async () => {
+  let connected = 0;
+  class SelfDestroying extends GTplComponentBase {
+    onInit() { this.destroy(); }
+    onConnect() { connected++; }
+  }
+  await attachAotTemplate(SelfDestroying, '<b>unused</b>');
+  Component({ tag: uniqueTag('g-self-destroy'), asWebComponent: false })(SelfDestroying);
+  const host = document.createElement('div');
+  document.body.append(host);
+  new SelfDestroying.__gcomponent__(host);
+  await wait();
+  assert.equal(host.children.length, 0);
+  assert.equal(connected, 0);
+  host.remove();
 });

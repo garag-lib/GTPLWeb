@@ -2,7 +2,7 @@
   "author": "Manuel Peliz",
   "license": "Apache-2.0",
   "name": "@mpeliz/gtplweb",
-  "version": "1.1.0",
+  "version": "2.0.0",
   "description": "Web component framework built on top of GTPL with AOT compilation.",
   "keywords": [
     "gtpl",
@@ -20,16 +20,17 @@
     "access": "public"
   },
   "engines": {
-    "node": ">=18"
+    "node": "^20.19.0 || ^22.12.0 || >=24.0.0"
   },
   "type": "module",
-  "main": "./dist/gtplweb.cjs.js",
+  "main": "./dist/gtplweb.cjs",
   "module": "./dist/gtplweb.esm.js",
   "types": "./dist/index.d.ts",
   "files": [
     "dist",
     "tools/aot-prebuild.js",
     "tools/app-build.js",
+    "tools/build-paths.js",
     "tools/init-app.js",
     "tools/starter-bundle.generated.js",
     "tools/starter-template",
@@ -45,7 +46,7 @@
     ".": {
       "types": "./dist/index.d.ts",
       "import": "./dist/gtplweb.esm.js",
-      "require": "./dist/gtplweb.cjs.js"
+      "require": "./dist/gtplweb.cjs"
     }
   },
   "scripts": {
@@ -54,8 +55,9 @@
     "aot": "node tools/aot-prebuild.js",
     "test": "npm run build:structured && npm run build:docs && node --test tests/*.test.mjs",
     "typecheck": "tsc --noEmit",
+    "test:package": "node --test --test-name-pattern='the require export' tests/tooling.test.mjs",
     "prepublishOnly": "npm run build:starter-bundle && npm run typecheck && npm run build:bundle",
-    "build:bundle": "npm run clean && npm run aot && rollup -c pro.rollup.config.mjs",
+    "build:bundle": "npm run clean && npm run aot && rollup -c pro.rollup.config.mjs && npm run test:package",
     "build:structured": "npm run clean && npm run aot && rollup -c rollup.config.mjs",
     "build:docs": "node tools/build-docs.mjs",
     "test:docs": "npm run build:docs && node --test tests/docs.test.mjs"
@@ -66,7 +68,7 @@
     "gtpl-init": "tools/init-app.js"
   },
   "dependencies": {
-    "@mpeliz/gtpl": "github:garag-lib/GTPL#v2.0.1",
+    "@mpeliz/gtpl": "github:garag-lib/GTPL#v3.0.0",
     "esbuild": "^0.28.1",
     "glob": "^13.0.6",
     "jsdom": "^27.0.1",

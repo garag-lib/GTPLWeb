@@ -32,7 +32,7 @@ AOT workflow below.
 
 ## Requirements
 
-- Node.js 18+
+- Node.js 20.19+, 22.12+, or 24+ (required by the AOT compiler's jsdom dependency).
 
 ## Install
 
@@ -244,7 +244,8 @@ Main options:
 - `--method-aliases true|false` (default: `false`; requires `optimized`)
 
 CLI options override `gtplweb.compiler` and `gtplweb.methodAliases` in the app's
-`package.json`. GTPLWeb 1.1 requires GTPL 2.0.1 or later. To generate
+`package.json`. GTPLWeb 2.0 uses GTPL 3.0, which removes the former Safe APIs.
+AOT generators continue to run directly without dynamic compilation. To generate
 imperative AOT templates with short method aliases:
 
 ```bash

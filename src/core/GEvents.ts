@@ -105,6 +105,7 @@ export class GEvents<Events extends Record<string, any> = Record<string, any>>
   implements EventBusInterface<Events> {
 
   private namespaces: Map<string, Map<keyof Events, EventListener<any>[]>> = new Map();
+  private completionListeners = new WeakSet<EventListener<any>>();
 
   constructor() {
   }
@@ -186,20 +187,37 @@ export class GEvents<Events extends Record<string, any> = Record<string, any>>
   off<K extends keyof Events>(
     event: K,
     handler: EventHandler<Events[K]>,
-    namespace = "default"
+    namespace?: string
   ): void {
-    const ns = this.getNamespace(namespace);
-    const handlers = ns.get(event);
+    const nsName = namespace ?? (event === "*" ? "__GLOBAL__" : "default");
+    const ns = this.namespaces.get(nsName);
+    const handlers = ns?.get(event);
     if (!handlers) return;
-    ns.set(event, handlers.filter(l => l.handler !== handler));
+    const remaining = handlers.filter(l => l.handler !== handler);
+    if (remaining.length) ns!.set(event, remaining);
+    else ns!.delete(event);
+    if (!ns!.size) this.namespaces.delete(nsName);
   }
 
-  offAll<K extends keyof Events>(event?: K, namespace = "default"): void {
-    if (event) {
-      this.getNamespace(namespace).delete(event);
+  offAll<K extends keyof Events>(event?: K, namespace?: string): void {
+    const nsName = namespace ?? (event === "*" ? "__GLOBAL__" : "default");
+    if (event !== undefined) {
+      const ns = this.namespaces.get(nsName);
+      ns?.delete(event);
+      if (ns && !ns.size) this.namespaces.delete(nsName);
     } else {
-      this.removeAllListeners(namespace);
+      this.removeAllListeners(nsName);
     }
+  }
+
+  private removeListener(event: keyof Events, listener: EventListener<any>, namespace: string): void {
+    const ns = this.namespaces.get(namespace);
+    const listeners = ns?.get(event);
+    if (!listeners) return;
+    const remaining = listeners.filter(candidate => candidate !== listener);
+    if (remaining.length) ns!.set(event, remaining);
+    else ns!.delete(event);
+    if (!ns!.size) this.namespaces.delete(namespace);
   }
 
   /**
@@ -217,22 +235,27 @@ export class GEvents<Events extends Record<string, any> = Record<string, any>>
     namespace = "default",
     options?: { sequential?: boolean }
   ): Promise<void> {
-    const ns = this.getNamespace(namespace);
-    const handlers = ns.get(event);
-    const wildcardLocal = ns.get("*" as keyof Events); // wildcard solo de este namespace
+    const ns = this.namespaces.get(namespace);
+    const handlers = ns?.get(event);
+    const wildcardLocal = ns?.get("*" as keyof Events); // wildcard solo de este namespace
 
     // --- NEW: buscar listeners "*" globales (sin namespace) ---
     const globalWildcardListeners =
       this.namespaces.get("__GLOBAL__")?.get("*" as keyof Events) ?? [];
 
     // Combinar listeners: específicos + wildcard local + wildcard global
-    const allHandlers: EventListener<any>[] = [
-      ...(handlers ?? []),
-      ...(wildcardLocal ?? []),
-      ...(globalWildcardListeners ?? []),
+    const allHandlers = [
+      ...(handlers ?? []).map(listener => ({ listener, event, namespace, wildcard: event === "*" })),
+      ...(event === "*" ? [] : wildcardLocal ?? []).map(listener => ({ listener, event: "*" as keyof Events, namespace, wildcard: true })),
+      ...(namespace === "__GLOBAL__" ? [] : globalWildcardListeners).map(listener => ({ listener, event: "*" as keyof Events, namespace: "__GLOBAL__", wildcard: true })),
     ];
 
     if (allHandlers.length === 0) return;
+
+    // Remove once listeners before calling user code, including reentrant/concurrent emits.
+    for (const entry of allHandlers) {
+      if (entry.listener.once) this.removeListener(entry.event, entry.listener, entry.namespace);
+    }
 
     const runHandler = async (listener: EventListener<Events[K]>, isWildcard = false) => {
       try {
@@ -247,25 +270,19 @@ export class GEvents<Events extends Record<string, any> = Record<string, any>>
       } catch (err) {
         console.error(`[GEvents] Error en handler "${String(event)}" (${namespace}):`, err);
       }
-      if (listener.once) {
-        const targetNs = (event === "*" && !namespace) ? "__GLOBAL__" : namespace;
-        this.off(event, listener.handler, targetNs);
-      }
     };
 
     // Ejecutar
-    const execute = async (listener: EventListener<Events[K]>) => {
-      const isWildcard =
-        (wildcardLocal?.includes(listener) ?? false) ||
-        (globalWildcardListeners?.includes(listener) ?? false);
-      await runHandler(listener, isWildcard);
-    };
+    const ordinary = allHandlers.filter(entry => !this.completionListeners.has(entry.listener));
+    const completion = allHandlers.filter(entry => this.completionListeners.has(entry.listener));
+    const execute = (entry: typeof allHandlers[number]) => runHandler(entry.listener, entry.wildcard);
 
     if (!options?.sequential) {
-      await Promise.all(allHandlers.map(execute));
+      await Promise.all(ordinary.map(execute));
     } else {
-      for (const l of allHandlers) await execute(l);
+      for (const entry of ordinary) await execute(entry);
     }
+    await Promise.all(completion.map(execute));
   }
 
   waitFor<K extends keyof Events>(
@@ -307,30 +324,8 @@ export class GEvents<Events extends Record<string, any> = Record<string, any>>
     return new Promise((resolve, reject) => {
       let timer: any;
 
-      const handler: EventHandler<Events[K]> = async (payload) => {
+      const handler: EventHandler<Events[K]> = (payload) => {
         clearTimeout(timer);
-
-        // Esperar a que todos los listeners de este evento terminen
-        const ns = this.getNamespace(namespace);
-        const handlers = ns.get(event);
-        if (handlers && handlers.length > 0) {
-          try {
-            // Ejecutamos los mismos handlers que el emit (respetando paralelismo)
-            await Promise.all(
-              handlers.map(async (listener) => {
-                try {
-                  await listener.handler(payload);
-                } catch (err) {
-                  console.error(`[GEvents] Error en waitForComplete("${String(event)}"):`, err);
-                }
-              })
-            );
-          } catch (err) {
-            console.error(`[GEvents] Error ejecutando handlers en waitForComplete("${String(event)}")`, err);
-          }
-        }
-
-        this.off(event, handler, namespace);
         resolve(payload);
       };
 
@@ -341,7 +336,12 @@ export class GEvents<Events extends Record<string, any> = Record<string, any>>
         }, timeoutMs);
       }
 
-      this.on(event, handler, { namespace });
+      const listener: EventListener<Events[K]> = { handler, once: true };
+      this.completionListeners.add(listener);
+      const ns = this.getNamespace(namespace);
+      const listeners = ns.get(event) ?? [];
+      listeners.push(listener);
+      ns.set(event, listeners);
     });
   }
 

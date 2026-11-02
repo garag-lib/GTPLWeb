@@ -96,6 +96,9 @@ export async function ensureCompiledTemplate(classMeta: ComponentMeta): Promise<
             let html = classMeta.templateHtml ?? null;
             if (html == null) {
                 const response = await fetch(classMeta.templateUrl!);
+                if (!response.ok) {
+                    throw new Error(`Template request failed: ${response.status} ${response.statusText} (${classMeta.templateUrl})`);
+                }
                 html = await response.text();
             }
             const compiled = (GTPL as any).jit.GCode(html);

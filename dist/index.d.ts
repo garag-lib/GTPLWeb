@@ -210,6 +210,7 @@ declare class GRouter {
     private defaultRoute?;
     private historyCache;
     private active;
+    private navigationSequence;
     private suppressNextHashChange;
     private cb?;
     private options;
@@ -264,6 +265,7 @@ declare class GRouter {
      * Limpia los datos asociados a una ruta (o todos).
      */
     clearData(path?: string): void;
+    private retainDataFor;
     /** Replace en el historial (compat) */
     replace(idOrPath: string, params?: Record<string, any>, query?: Record<string, any>): void;
     back(): void;
@@ -294,7 +296,7 @@ declare class GRouter {
     getAllRoutes(): GURL[];
     /**
      * Devuelve el GMatch que resultaría de navegar a un path dado,
-     * pero si existe en caché se devuelve directamente el objeto cacheado.
+     * usando una copia cuando la ruta ya existe en caché.
      * NO modifica el router ni dispara eventos.
      */
     matchPath(pathOrUrl: string): Promise<GMatch | null>;
@@ -380,6 +382,7 @@ interface EventBusInterface<Events extends Record<string, any> = Record<string, 
  */
 declare class GEvents<Events extends Record<string, any> = Record<string, any>> implements EventBusInterface<Events> {
     private namespaces;
+    private completionListeners;
     constructor();
     private getNamespace;
     /**
@@ -415,6 +418,7 @@ declare class GEvents<Events extends Record<string, any> = Record<string, any>> 
     };
     off<K extends keyof Events>(event: K, handler: EventHandler<Events[K]>, namespace?: string): void;
     offAll<K extends keyof Events>(event?: K, namespace?: string): void;
+    private removeListener;
     /**
      * Emite un evento (ejecuta todos los listeners).
      *
@@ -533,7 +537,9 @@ interface GlobalEvents {
 declare const GBus: GEvents<GlobalEvents>;
 
 declare abstract class AppGTplComponent extends GTplComponentBase {
+    private routeSubscription?;
     onConstruct(): void;
+    onDestroy(): void;
     onRouteChange(state: "new" | "history" | "notfound", current: RoutedMatch, prev: RoutedMatch): void;
 }
 

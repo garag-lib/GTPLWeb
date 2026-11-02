@@ -9,7 +9,7 @@ export default [
     input: 'src-aot/index.ts',
     output: [
       { file: 'dist/gtplweb.esm.js', format: 'es', sourcemap: true },
-      { file: 'dist/gtplweb.cjs.js', format: 'cjs', sourcemap: true, exports: 'named' }
+      { file: 'dist/gtplweb.cjs', format: 'cjs', sourcemap: true, exports: 'named' }
     ],
     plugins: [
       nodeResolve(),

@@ -67,28 +67,49 @@ function initComponentHost(host: any, ControllerClass: any, baseMeta: ComponentM
 
   // --- 1. Controller ---
   const ctrl = new ControllerClass(...args);
-  defineHidden(host, COMP_CTRL, ctrl);
+  defineHidden(host, COMP_CTRL, ctrl, { writable: true, configurable: true });
   defineHidden(ctrl, "$el", host);
 
   // --- 2. Flags ---
   const flags = { firstRender: true, stylesApplied: false, destroyed: false };
-  defineHidden(host, COMP_FLAGS, flags);
+  defineHidden(host, COMP_FLAGS, flags, { configurable: true });
+  defineHidden(host, COMP_GTPL, null, { writable: true, configurable: true });
 
   // --- 3. destroy() ---
   defineHidden(ctrl, "destroy", function () {
-    ctrl.onDestroy?.();
+    if (flags.destroyed) return;
     flags.destroyed = true;
-    try { host[COMP_GTPL]?.destroy?.(); } catch (ex) { console.error(ex); }
-    flags.firstRender = false;
-    if (!useWebComponent)
-      host.innerHTML = '';
-    if (useWebComponent || host[HOST_CREATE])
-      host.remove();
-    host[COMP_GTPL] = null;
+    try {
+      ctrl.onDestroy?.();
+    } finally {
+      const destroyChildren = (node: ParentNode) => {
+        for (const child of Array.from(node.children)) {
+          const childCtrl = getControllerFromComponent(child);
+          if (childCtrl) {
+            try { childCtrl.destroy?.(); } catch (error) { console.error(error); }
+          }
+          else {
+            destroyChildren(child);
+            if (child.shadowRoot) destroyChildren(child.shadowRoot);
+          }
+        }
+      };
+      destroyChildren(host.$host ?? host);
+      try { host[COMP_GTPL]?.destroy?.(); } catch (ex) { console.error(ex); }
+      flags.firstRender = false;
+      if (!useWebComponent)
+        host.innerHTML = '';
+      if (useWebComponent || host[HOST_CREATE])
+        host.remove();
+      host[COMP_GTPL] = null;
+      host[COMP_MOUNT] = null;
+      host[COMP_CTRL] = null;
+    }
   }.bind(ctrl));
 
   // --- 4. onConstruct ---
   ctrl.onConstruct?.(...args);
+  if (flags.destroyed) return host;
 
   // --- 5. META por clase ---
   const ctor = useWebComponent ? host.constructor : ControllerClass.__gcomponent__;
@@ -121,11 +142,11 @@ function initComponentHost(host: any, ControllerClass: any, baseMeta: ComponentM
     ctrl.onTemplateReady?.();
   };
 
-  defineHidden(host, COMP_MOUNT, mountTemplateIfReady);
+  defineHidden(host, COMP_MOUNT, mountTemplateIfReady, { writable: true, configurable: true });
 
   const loadTemplate = () => {
     const gtpl = instantiateTemplate(ctrl, classMeta.templateFactory);
-    defineHidden(host, COMP_GTPL, gtpl, { writable: true });
+    host[COMP_GTPL] = gtpl;
     ctrl.onInit?.();
     mountTemplateIfReady();
   };
@@ -140,6 +161,7 @@ function initComponentHost(host: any, ControllerClass: any, baseMeta: ComponentM
 
   // --- 8. Styles + Render ---
   const finishSetup = () => {
+    if (flags.destroyed) return;
     if (!flags.stylesApplied) {
       flags.stylesApplied = true;
       if (classMeta.styleMode !== "lazy") {
@@ -282,7 +304,7 @@ export function Component<C extends GController, TBase extends ControllerCtor<C>
 
         connectedCallback(): void {
           this[COMP_MOUNT]?.();
-          getCtrl(this).onConnect?.();
+          getCtrl(this)?.onConnect?.();
         }
 
         disconnectedCallback(): void {
@@ -306,9 +328,9 @@ export function Component<C extends GController, TBase extends ControllerCtor<C>
             defineHidden(ele as any, HOST_CREATE, true);
           }
 
-          ele?.appendChild(new GWatcher(this));
-
-          return initComponentHost(ele, ControllerClass, baseMeta, false, ...args);
+          const host = initComponentHost(ele, ControllerClass, baseMeta, false, ...args);
+          if (!getFlags(host).destroyed) host.appendChild(new GWatcher(getCtrl(host)));
+          return host;
 
         }
 

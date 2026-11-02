@@ -5,6 +5,7 @@ import fs from 'fs';
 import path from 'path';
 import { globSync } from 'glob';
 import { createRequire } from 'module';
+import { containsPath } from './build-paths.js';
 
 const rootDir = process.cwd();
 const requireFromRoot = createRequire(path.join(rootDir, 'package.json'));
@@ -81,6 +82,11 @@ function ensureAotInput() {
 }
 
 function cleanOutDir() {
+  if (containsPath(outDir, rootDir) || containsPath(outDir, srcDir) || containsPath(outDir, srcAotDir)
+      || containsPath(srcAotDir, outDir) || containsPath(outDir, entry)
+      || (i18nDir && containsPath(outDir, i18nDir))) {
+    throw new Error('The output directory must not overlap application sources or AOT input.');
+  }
   if (!clean) {
     fs.mkdirSync(outDir, { recursive: true });
     return;

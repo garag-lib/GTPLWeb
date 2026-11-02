@@ -14,11 +14,11 @@ console.log(`Compilando desde: ${inputDir} (${isProd ? 'PROD' : 'DEV'})`);
 function minifyWithEsbuild() {
   return {
     name: 'minify-with-esbuild',
-    async renderChunk(code) {
+    async renderChunk(code, _chunk, outputOptions) {
       const result = await transform(code, {
         minify: true,
         target: 'es2020',
-        format: 'esm'
+        format: outputOptions.format === 'cjs' ? 'cjs' : 'esm'
       });
       return {
         code: result.code,
@@ -33,7 +33,7 @@ export default [
     input: `${inputDir}/index.ts`,
     output: [
       { file: 'dist/gtplweb.esm.js', format: 'es', sourcemap: !isProd },
-      { file: 'dist/gtplweb.cjs.js', format: 'cjs', sourcemap: !isProd, exports: 'named' }
+      { file: 'dist/gtplweb.cjs', format: 'cjs', sourcemap: !isProd, exports: 'named' }
     ],
     plugins: [
       nodeResolve(),
