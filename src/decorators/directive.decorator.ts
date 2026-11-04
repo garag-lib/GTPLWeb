@@ -1,4 +1,4 @@
-import GTPL from '@mpeliz/gtpl';
+import GTPL from '@mpeliz/gtpl/runtime';
 
 /**
  * Configuración del decorador @Directive()

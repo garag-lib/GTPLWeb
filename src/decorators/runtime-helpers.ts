@@ -1,5 +1,6 @@
-import GTPL from '@mpeliz/gtpl';
+import GTPL from '@mpeliz/gtpl/runtime';
 import { ComponentMeta, HostElement } from '../component.types';
+import { requireTemplateCompiler } from './template-compiler.js';
 
 // ---- 
 /*
@@ -101,8 +102,7 @@ export async function ensureCompiledTemplate(classMeta: ComponentMeta): Promise<
                 }
                 html = await response.text();
             }
-            const compiled = (GTPL as any).jit.GCode(html);
-            classMeta.templateFactory = (GTPL as any).jit.GCompile(compiled);
+            classMeta.templateFactory = requireTemplateCompiler()(html);
         } catch (err) {
             console.error('[GTPL compile error]', { url: classMeta.templateUrl, err });
             throw err;

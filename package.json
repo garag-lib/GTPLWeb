@@ -2,7 +2,7 @@
   "author": "Manuel Peliz",
   "license": "Apache-2.0",
   "name": "@mpeliz/gtplweb",
-  "version": "2.0.2",
+  "version": "2.1.0",
   "description": "Web component framework built on top of GTPL with AOT compilation.",
   "keywords": [
     "gtpl",
@@ -47,6 +47,11 @@
       "types": "./dist/index.d.ts",
       "import": "./dist/gtplweb.esm.js",
       "require": "./dist/gtplweb.cjs"
+    },
+    "./runtime": {
+      "types": "./dist/runtime.d.ts",
+      "import": "./dist/runtime.esm.js",
+      "require": "./dist/runtime.cjs"
     }
   },
   "scripts": {
@@ -55,7 +60,7 @@
     "aot": "node tools/aot-prebuild.js",
     "test": "npm run build:structured && npm run build:docs && node --test tests/*.test.mjs",
     "typecheck": "tsc --noEmit",
-    "test:package": "node --test --test-name-pattern='the require export' tests/tooling.test.mjs",
+    "test:package": "node --test tests/runtime-entry.test.mjs && node --test --test-name-pattern='the require export' tests/tooling.test.mjs",
     "prepublishOnly": "npm run build:starter-bundle && npm run typecheck && npm run build:bundle",
     "build:bundle": "npm run clean && npm run aot && rollup -c pro.rollup.config.mjs && npm run test:package",
     "build:structured": "npm run clean && npm run aot && rollup -c rollup.config.mjs",

@@ -1,6 +1,7 @@
 import type { GController, ControllerCtor, ComponentConfig, ComponentMeta, HostElement, WithGComponent, RegisteredComponent } from '../component.types';
 import { applyComponentStyles, applyLazyStyles, instantiateTemplate, ensureCompiledTemplate } from './runtime-helpers.js';
-import GTPL from '@mpeliz/gtpl';
+import GTPL from '@mpeliz/gtpl/runtime';
+import { requireTemplateCompiler } from './template-compiler.js';
 
 // ---- 
 
@@ -64,6 +65,7 @@ export function isHostCreated(ele: any) {
 }
 
 function initComponentHost(host: any, ControllerClass: any, baseMeta: ComponentMeta, useWebComponent: boolean, ...args: any) {
+  if (!baseMeta.templateFactory) requireTemplateCompiler();
 
   // --- 1. Controller ---
   const ctrl = new ControllerClass(...args);

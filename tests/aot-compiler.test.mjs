@@ -15,7 +15,7 @@ for (const key of ['window', 'document', 'Node', 'Element', 'DOMParser', 'DOMTok
   globalThis[key] = dom.window[key];
 globalThis.addEventListener = dom.window.addEventListener.bind(dom.window);
 globalThis.removeEventListener = dom.window.removeEventListener.bind(dom.window);
-const { default: GTPL } = await import('@mpeliz/gtpl');
+const { default: GTPL } = await import('@mpeliz/gtpl/runtime');
 const template = `<section><h2>{{ title }}</h2><button onclick="{{ this.count++ }}">{{ count }}</button>
   <strong>{{ return rows.length }}</strong><span>{{ return rows[1] ? rows[1].name : 'empty' }}</span>
   <ul><li g-for="rows;index;row">{{ row.name }}</li></ul></section>`;
@@ -44,7 +44,7 @@ async function renderCompiled(source) {
   const module = { exports: {} };
   const runtime = { ...GTPL, jit: new Proxy({}, { get() { throw Error('AOT must not invoke JIT'); } }) };
   const require = name => {
-    if (name === '@mpeliz/gtpl') return { __esModule: true, default: runtime };
+    if (name === '@mpeliz/gtpl' || name === '@mpeliz/gtpl/runtime') return { __esModule: true, default: runtime };
     if (name === '@mpeliz/gtplweb') return { Component: () => Controller => Controller };
     throw Error('Unexpected dependency: ' + name);
   };

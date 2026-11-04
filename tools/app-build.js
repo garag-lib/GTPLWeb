@@ -9,11 +9,13 @@ import { containsPath } from './build-paths.js';
 
 const rootDir = process.cwd();
 const requireFromRoot = createRequire(path.join(rootDir, 'package.json'));
-const gtplAliasPath = resolveGtplAliasPath();
 
 const args = parseArgs(process.argv.slice(2));
 const mode = args.mode || 'dev';
 const config = readConfig();
+const runtimeOnly = args.runtimeOnly ?? config.runtimeOnly ?? false;
+if (typeof runtimeOnly !== 'boolean') throw new Error('gtplweb.runtimeOnly must be a boolean.');
+const gtplAliases = runtimeOnly ? resolveRuntimeAliases() : resolveGtplAliases();
 const outDir = path.resolve(rootDir, args.outDir || config.outDir || 'www/dist');
 const srcAotDir = path.resolve(rootDir, args.srcAotDir || args.aotDir || config.aotDir || config.srcAotDir || 'src-aot');
 const srcDir = path.resolve(rootDir, args.srcDir || config.srcDir || 'src');
@@ -33,7 +35,7 @@ async function main() {
   copyStaticFiles();
   copyI18nFiles();
 
-  console.log(`GTPL app build ${mode} OK -> ${path.relative(rootDir, outDir)}`);
+  console.log(`GTPL app build ${mode}${runtimeOnly ? ' (runtime-only)' : ''} OK -> ${path.relative(rootDir, outDir)}`);
 }
 
 function parseArgs(argv) {
@@ -56,6 +58,8 @@ function parseArgs(argv) {
     else if (arg === '--no-i18n') parsed.i18nDir = false;
     else if (arg === '--no-clean') parsed.clean = false;
     else if (arg === '--verify-dedupe') parsed.verifyDedupe = true;
+    else if (arg === '--runtime-only') parsed.runtimeOnly = true;
+    else if (arg === '--no-runtime-only') parsed.runtimeOnly = false;
   }
   return parsed;
 }
@@ -101,7 +105,7 @@ async function buildApp() {
     target: 'es2020',
     logLevel: 'info',
     external: [],
-    alias: gtplAliasPath ? { '@mpeliz/gtpl': gtplAliasPath } : undefined
+    alias: gtplAliases
   };
 
   if (mode === 'bundle') {
@@ -152,13 +156,29 @@ async function buildApp() {
   }
 }
 
-function resolveGtplAliasPath() {
+function resolveGtplAliases() {
   try {
     const gtplPkgPath = requireFromRoot.resolve('@mpeliz/gtpl/package.json');
-    return path.dirname(gtplPkgPath);
+    const pkg = JSON.parse(fs.readFileSync(gtplPkgPath, 'utf8'));
+    return {
+      '@mpeliz/gtpl': path.resolve(path.dirname(gtplPkgPath), pkg.exports['.'].import),
+      '@mpeliz/gtpl/runtime': path.resolve(path.dirname(gtplPkgPath), pkg.exports['./runtime'].import)
+    };
   } catch {
-    return null;
+    return undefined;
   }
+}
+
+function resolveRuntimeAliases() {
+  const aliases = {};
+  for (const name of ['@mpeliz/gtpl', '@mpeliz/gtplweb']) {
+    const pkgFile = requireFromRoot.resolve(`${name}/package.json`);
+    const pkg = JSON.parse(fs.readFileSync(pkgFile, 'utf8'));
+    const entry = pkg.exports?.['./runtime']?.import;
+    if (!entry) throw new Error(`${name} does not provide a runtime entry. Update the dependency.`);
+    aliases[name] = aliases[`${name}/runtime`] = path.resolve(path.dirname(pkgFile), entry);
+  }
+  return aliases;
 }
 
 function verifyGtplDedupe(metafile) {
@@ -166,12 +186,13 @@ function verifyGtplDedupe(metafile) {
   if (!metafile?.inputs) {
     throw new Error('Dedupe verification failed: esbuild metafile not available.');
   }
-  const gtplInputs = Object.keys(metafile.inputs).filter((input) =>
-    input.includes('@mpeliz/gtpl/dist/gtpl.esm.js')
-  );
-  if (gtplInputs.length > 1) {
+  const gtplRoots = new Set(Object.keys(metafile.inputs).flatMap(input => {
+    const match = /^(.*@mpeliz\/gtpl)\/dist\//.exec(input.replaceAll('\\', '/'));
+    return match ? [match[1]] : [];
+  }));
+  if (gtplRoots.size > 1) {
     throw new Error(
-      `Dedupe verification failed: @mpeliz/gtpl is bundled from multiple paths:\n${gtplInputs.join('\n')}`
+      `Dedupe verification failed: @mpeliz/gtpl is bundled from multiple paths:\n${[...gtplRoots].join('\n')}`
     );
   }
 }

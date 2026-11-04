@@ -1956,6 +1956,29 @@
     return x2(s2);
   } } };
 
+  // src/decorators/template-compiler.ts
+  var compiler;
+  function setTemplateCompiler(value) {
+    compiler = value;
+  }
+  function requireTemplateCompiler() {
+    if (!compiler) {
+      throw new Error("GTPLWeb runtime requires an AOT template. Run gtpl-aot or use @mpeliz/gtplweb for JIT templates.");
+    }
+    return compiler;
+  }
+
+  // src/core/GDirectiveBase.ts
+  var GDirectiveBase = class {
+    constructor(ele, value, root, arg) {
+      this.ele = ele;
+      this.value = value;
+      this.root = root.Root;
+      this.argument = arg;
+      this.onInit?.();
+    }
+  };
+
   // src/decorators/runtime-helpers.ts
   var SHEET_CACHE = /* @__PURE__ */ new WeakMap();
   function applyComponentStyles(cmp, meta, mode) {
@@ -2012,8 +2035,7 @@
           }
           html = await response.text();
         }
-        const compiled = C2.jit.GCode(html);
-        classMeta.templateFactory = C2.jit.GCompile(compiled);
+        classMeta.templateFactory = requireTemplateCompiler()(html);
       } catch (err) {
         console.error("[GTPL compile error]", { url: classMeta.templateUrl, err });
         throw err;
@@ -2025,7 +2047,7 @@
   }
   function instantiateTemplate(controller, generator) {
     const options = { root: controller, generator };
-    const gtplobj = new C2.GTpl(options);
+    const gtplobj = new _e.GTpl(options);
     return gtplobj;
   }
 
@@ -2062,6 +2084,7 @@
     return ele[HOST_CREATE] === true ? true : false;
   }
   function initComponentHost(host, ControllerClass, baseMeta, useWebComponent, ...args) {
+    if (!baseMeta.templateFactory) requireTemplateCompiler();
     const ctrl = new ControllerClass(...args);
     defineHidden(host, COMP_CTRL, ctrl, { writable: true, configurable: true });
     defineHidden(ctrl, "$el", host);
@@ -2260,7 +2283,7 @@
         GeneratedComponent = class {
           constructor(ele, ...args) {
             if (!ele) {
-              ele = C2.utils.globalObject.document.createElement("div");
+              ele = _e.utils.globalObject.document.createElement("div");
               ele.setAttribute("g-component", tagName);
               defineHidden(ele, HOST_CREATE, true);
             }
@@ -2290,230 +2313,426 @@
     };
   }
 
-  // src/core/GTplComponentBase.ts
-  var GTplComponentBase = class {
-    onConstruct() {
+  // src/decorators/directive.decorator.ts
+  function isValidAttributeName(name) {
+    return /^[a-zA-Z_][a-zA-Z0-9_\-:.]*$/.test(name);
+  }
+  function Directive(config) {
+    return function(constructor) {
+      const name = config?.name ?? constructor.name.replace(/Directive$/, "").replace(/([A-Z])/g, "-$1").toLowerCase().slice(1);
+      if (!name) {
+        throw new Error("@Directive() requiere un nombre v\xE1lido");
+      }
+      if (!isValidAttributeName(name)) {
+        throw new Error(
+          `Nombre de directiva inv\xE1lido: "${name}". Debe ser un nombre de atributo HTML v\xE1lido.`
+        );
+      }
+      const success = _e.GregisterDirective(name, constructor);
+      if (!success) {
+        console.warn(`\u26A0\uFE0F La directiva "${name}" ya est\xE1 registrada.`);
+      }
+      return constructor;
+    };
+  }
+
+  // src/directives/GSet.ts
+  var GSet = class extends GDirectiveBase {
+    onInit() {
+      if (this.argument && this.argument.trim()) {
+        this.path = this.argument.trim().split(".");
+        return;
+      }
+      const legacy = this.ele.getAttribute("g-set-var");
+      if (legacy && legacy.trim()) {
+        this.path = legacy.trim().split(".");
+        this.ele.removeAttribute("g-set-var");
+        return;
+      }
+      console.error(
+        'g-set: falta el nombre de la propiedad. Usa g-set:prop / g-set:obj.prop o g-set-var="prop".'
+      );
+    }
+    applyPathSet(target, value) {
+      if (!target || !this.path || this.path.length === 0) return;
+      const path = this.path;
+      if (path.length > 1) {
+        const reduce = (obj, index, fin) => {
+          if (obj == null) return void 0;
+          if (index === fin) return obj[path[index]];
+          return reduce(obj[path[index]], index + 1, fin);
+        };
+        const parent = reduce(target, 0, path.length - 2);
+        if (!parent) return;
+        const lastKey = path[path.length - 1];
+        parent[lastKey] = value;
+      } else {
+        const lastKey = path[0];
+        target[lastKey] = value;
+      }
+    }
+    setAttribute(name, value) {
+      if (!this.path || this.path.length === 0) return;
+      const controller = getControllerFromComponent(this.ele);
+      if (!controller) return;
+      this.applyPathSet(controller, value);
+    }
+    getAttribute(name) {
+      return null;
+    }
+    removeAttribute(name) {
+    }
+  };
+  GSet = __decorateClass([
+    Directive({
+      name: "g-set"
+    })
+  ], GSet);
+
+  // src/directives/GClass.ts
+  var GClass = class extends GDirectiveBase {
+    onInit() {
+      const current = this.ele.getAttribute("class");
+      this.cls = current ? current.split(/\s+/).filter(Boolean) : [];
+    }
+    setAttribute(name, value) {
+      const ele = this.ele;
+      this.cls = Array.isArray(value) ? Array.from(value) : String(value || "").split(/\s+/);
+      if (this.cls.length) ele.setAttribute("class", this.cls.join(" "));
+      else ele.removeAttribute("class");
+    }
+    getAttribute(name) {
+      return this.cls?.length ? this.cls.join(" ") : null;
+    }
+    removeAttribute(name) {
+      const ele = this.ele;
+      ele.removeAttribute("class");
+      this.cls = [];
+    }
+  };
+  GClass = __decorateClass([
+    Directive({
+      name: "g-class"
+    })
+  ], GClass);
+
+  // src/directives/GComponent.ts
+  var GComponent = class extends GDirectiveBase {
+    destroyComponent() {
+      if (this.webc) {
+        const prevCtrl = getControllerFromComponent(this.webc);
+        prevCtrl?.destroy();
+        if (!this.regc?.asWebComponent) {
+          if (isHostCreated(this.webc)) this.webc.remove();
+          else this.webc.setAttribute("g-component", "");
+        }
+        this.webc = void 0;
+        this.regc = void 0;
+      }
+    }
+    createComponent(tagName) {
+      const nextTag = String(tagName ?? "").trim();
+      if (!nextTag) {
+        this.destroyComponent();
+        this.value = "";
+        this.ele.removeAttribute("g-component");
+        return;
+      }
+      if (this.value === nextTag && this.webc)
+        return;
+      this.destroyComponent();
+      const regc = getRegisteredComponent(nextTag);
+      if (!regc) {
+        console.warn(`[g-component] componente "${nextTag}" no registrado`);
+        return;
+      }
+      this.value = nextTag;
+      this.ele.setAttribute("g-component", this.value);
+      this.ele.innerHTML = "";
+      if (regc.asWebComponent) {
+        const webc = new regc.ComponentClass();
+        this.ele.appendChild(webc);
+        this.webc = webc;
+      } else {
+        this.webc = new regc.ComponentClass(this.ele);
+      }
+      this.regc = regc;
     }
     onInit() {
+      this.createComponent(this.value);
     }
-    onTemplateReady() {
+    setAttribute(name, value) {
+      this.createComponent(String(value ?? ""));
     }
-    onConnect() {
+    getAttribute(name) {
+      return this.value ?? "";
     }
-    onDisconnect() {
-    }
-    onDestroy() {
-    }
-  };
-
-  // src/core/GEvents.ts
-  var GEvents = class {
-    constructor() {
-      this.namespaces = /* @__PURE__ */ new Map();
-      this.completionListeners = /* @__PURE__ */ new WeakSet();
-    }
-    getNamespace(ns = "default") {
-      if (!this.namespaces.has(ns)) {
-        this.namespaces.set(ns, /* @__PURE__ */ new Map());
-      }
-      return this.namespaces.get(ns);
-    }
-    /**
-     * Registra un listener (interno). Usado por on() y once().
-     */
-    addListener(event, handler, options = {}) {
-      if (event === "*" && !options.namespace) {
-        const global2 = this.getNamespace("__GLOBAL__");
-        const listeners2 = global2.get(event) || [];
-        listeners2.push({ handler, once: options.once, priority: options.priority ?? 0 });
-        listeners2.sort((a3, b3) => (b3.priority ?? 0) - (a3.priority ?? 0));
-        global2.set(event, listeners2);
-        return handler;
-      }
-      const ns = this.getNamespace(options.namespace);
-      const listeners = ns.get(event) || [];
-      listeners.push({ handler, once: options.once, priority: options.priority ?? 0 });
-      listeners.sort((a3, b3) => (b3.priority ?? 0) - (a3.priority ?? 0));
-      ns.set(event, listeners);
-      return handler;
-    }
-    /**
-     * Suscribe un listener a un evento.
-     */
-    on(event, handler, options = {}) {
-      return this.addListener(event, handler, options);
-    }
-    /**
-     * Suscribe un listener que se ejecutará una sola vez.
-     */
-    once(event, handler, options = {}) {
-      return this.addListener(event, handler, { ...options, once: true });
-    }
-    /**
-     * Suscribe un listener y devuelve un objeto con `.off()` para cancelarlo fácilmente.
-     * 
-     * @example
-     * const sub = bus.subscribe("update", data => console.log(data));
-     * sub.off(); // 👈 elimina el listener
-     */
-    subscribe(event, handler, options) {
-      this.on(event, handler, options);
-      return {
-        off: () => this.off(event, handler, options?.namespace)
-      };
-    }
-    off(event, handler, namespace) {
-      const nsName = namespace ?? (event === "*" ? "__GLOBAL__" : "default");
-      const ns = this.namespaces.get(nsName);
-      const handlers = ns?.get(event);
-      if (!handlers) return;
-      const remaining = handlers.filter((l3) => l3.handler !== handler);
-      if (remaining.length) ns.set(event, remaining);
-      else ns.delete(event);
-      if (!ns.size) this.namespaces.delete(nsName);
-    }
-    offAll(event, namespace) {
-      const nsName = namespace ?? (event === "*" ? "__GLOBAL__" : "default");
-      if (event !== void 0) {
-        const ns = this.namespaces.get(nsName);
-        ns?.delete(event);
-        if (ns && !ns.size) this.namespaces.delete(nsName);
-      } else {
-        this.removeAllListeners(nsName);
-      }
-    }
-    removeListener(event, listener, namespace) {
-      const ns = this.namespaces.get(namespace);
-      const listeners = ns?.get(event);
-      if (!listeners) return;
-      const remaining = listeners.filter((candidate) => candidate !== listener);
-      if (remaining.length) ns.set(event, remaining);
-      else ns.delete(event);
-      if (!ns.size) this.namespaces.delete(namespace);
-    }
-    /**
-     * Emite un evento (ejecuta todos los listeners).
-     * 
-     * @param event Nombre del evento.
-     * @param payload Datos asociados al evento.
-     * @param namespace Namespace opcional (por defecto "default").
-     * @param options 
-     *    - sequential: fuerza la ejecución en orden (por defecto es paralelo).
-     */
-    async emit(event, payload, namespace = "default", options) {
-      const ns = this.namespaces.get(namespace);
-      const handlers = ns?.get(event);
-      const wildcardLocal = ns?.get("*");
-      const globalWildcardListeners = this.namespaces.get("__GLOBAL__")?.get("*") ?? [];
-      const allHandlers = [
-        ...(handlers ?? []).map((listener) => ({ listener, event, namespace, wildcard: event === "*" })),
-        ...(event === "*" ? [] : wildcardLocal ?? []).map((listener) => ({ listener, event: "*", namespace, wildcard: true })),
-        ...(namespace === "__GLOBAL__" ? [] : globalWildcardListeners).map((listener) => ({ listener, event: "*", namespace: "__GLOBAL__", wildcard: true }))
-      ];
-      if (allHandlers.length === 0) return;
-      for (const entry of allHandlers) {
-        if (entry.listener.once) this.removeListener(entry.event, entry.listener, entry.namespace);
-      }
-      const runHandler = async (listener, isWildcard = false) => {
-        try {
-          if (isWildcard) {
-            const handler = listener.handler;
-            await handler({ event, payload, namespace });
-          } else {
-            const handler = listener.handler;
-            await handler(payload);
-          }
-        } catch (err) {
-          console.error(`[GEvents] Error en handler "${String(event)}" (${namespace}):`, err);
-        }
-      };
-      const ordinary = allHandlers.filter((entry) => !this.completionListeners.has(entry.listener));
-      const completion = allHandlers.filter((entry) => this.completionListeners.has(entry.listener));
-      const execute = (entry) => runHandler(entry.listener, entry.wildcard);
-      if (!options?.sequential) {
-        await Promise.all(ordinary.map(execute));
-      } else {
-        for (const entry of ordinary) await execute(entry);
-      }
-      await Promise.all(completion.map(execute));
-    }
-    waitFor(event, timeoutMs, namespace = "default") {
-      return new Promise((resolve, reject) => {
-        const handler = (payload) => {
-          clearTimeout(timer);
-          this.off(event, handler, namespace);
-          resolve(payload);
-        };
-        let timer;
-        if (timeoutMs) {
-          timer = setTimeout(() => {
-            this.off(event, handler, namespace);
-            reject(new Error(`Timeout esperando evento "${String(event)}" (${namespace})`));
-          }, timeoutMs);
-        }
-        this.on(event, handler, { namespace });
-      });
-    }
-    /**
-    * Espera a que un evento se emita y **todos los listeners terminen** (incluidos los async).
-    * 
-    * @param event Nombre del evento a esperar.
-    * @param timeoutMs Tiempo máximo de espera (opcional).
-    * @param namespace Namespace opcional (por defecto "default").
-    * 
-    * @returns Una promesa que se resuelve con el payload cuando todos los handlers hayan terminado.
-    */
-    waitForComplete(event, timeoutMs, namespace = "default") {
-      return new Promise((resolve, reject) => {
-        let timer;
-        const handler = (payload) => {
-          clearTimeout(timer);
-          resolve(payload);
-        };
-        if (timeoutMs) {
-          timer = setTimeout(() => {
-            this.off(event, handler, namespace);
-            reject(new Error(`Timeout esperando evento completo "${String(event)}" (${namespace})`));
-          }, timeoutMs);
-        }
-        const listener = { handler, once: true };
-        this.completionListeners.add(listener);
-        const ns = this.getNamespace(namespace);
-        const listeners = ns.get(event) ?? [];
-        listeners.push(listener);
-        ns.set(event, listeners);
-      });
-    }
-    removeAllListeners(namespace) {
-      if (namespace) {
-        this.namespaces.delete(namespace);
-      } else {
-        this.namespaces.clear();
-      }
-    }
-    count(ns) {
-      return [...ns.values()].reduce((acc, arr) => acc + (arr?.length ?? 0), 0);
-    }
-    listenerCount(namespace) {
-      if (namespace) return this.count(this.namespaces.get(namespace) ?? /* @__PURE__ */ new Map());
-      let total = 0;
-      for (const ns of this.namespaces.values()) total += this.count(ns);
-      return total;
-    }
-    listNamespaces() {
-      return [...this.namespaces.keys()];
-    }
-    hasListeners(event, namespace = "default") {
-      const ns = this.namespaces.get(namespace);
-      return !!ns?.get(event)?.length;
-    }
-    getListeners(event, namespace = "default") {
-      return [...this.namespaces.get(namespace)?.get(event) ?? []];
+    removeAttribute(name) {
+      this.destroyComponent();
+      this.value = "";
+      this.ele.removeAttribute("g-component");
     }
   };
+  GComponent = __decorateClass([
+    Directive({
+      name: "g-component"
+    })
+  ], GComponent);
 
-  // src/services/GBus.ts
-  var GBus = new GEvents();
+  // src/core/Animations.ts
+  var Animations = class _Animations {
+    static {
+      this.enabled = true;
+    }
+    static {
+      this.animationSequence = 0;
+    }
+    static {
+      this.animationTokens = /* @__PURE__ */ new WeakMap();
+    }
+    static {
+      this.pointerEventsBeforeAnimation = /* @__PURE__ */ new WeakMap();
+    }
+    static prefersReducedMotion() {
+      return typeof window !== "undefined" && typeof window.matchMedia === "function" && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    }
+    static lockPointerEvents(element) {
+      if (!this.pointerEventsBeforeAnimation.has(element)) {
+        this.pointerEventsBeforeAnimation.set(element, element.style.pointerEvents);
+      }
+      element.style.pointerEvents = "none";
+    }
+    static restorePointerEvents(element, token) {
+      if (this.animationTokens.get(element) !== token) return;
+      this.animationTokens.delete(element);
+      if (!this.pointerEventsBeforeAnimation.has(element)) return;
+      const previous = this.pointerEventsBeforeAnimation.get(element) ?? "";
+      this.pointerEventsBeforeAnimation.delete(element);
+      if (previous) element.style.pointerEvents = previous;
+      else element.style.removeProperty("pointer-events");
+    }
+    static enable() {
+      _Animations.enabled = true;
+    }
+    static disable() {
+      _Animations.enabled = false;
+    }
+    /** Define el estado inicial sin transición */
+    static setInitial(element, styles) {
+      if (!_Animations.enabled || this.prefersReducedMotion()) return;
+      element.style.transition = "none";
+      this.lockPointerEvents(element);
+      Object.assign(element.style, styles);
+    }
+    static resetStyles(el) {
+      el.style.removeProperty("opacity");
+      el.style.removeProperty("transform");
+      el.style.removeProperty("transition");
+      el.style.removeProperty("pointer-events");
+    }
+    /**
+     * Aplica el estado final con transición
+     * CON doble requestAnimationFrame para máxima fiabilidad
+     */
+    static animateTo(element, styles, duration = 300, easing = "ease") {
+      const token = ++this.animationSequence;
+      this.animationTokens.set(element, token);
+      if (!_Animations.enabled || this.prefersReducedMotion() || duration <= 0) {
+        Object.assign(element.style, styles);
+        this.restorePointerEvents(element, token);
+        return Promise.resolve();
+      }
+      return new Promise((resolve) => {
+        let settled = false;
+        const finish = () => {
+          if (settled) return;
+          settled = true;
+          element.removeEventListener("transitionend", onFinish);
+          element.removeEventListener("transitioncancel", onFinish);
+          clearTimeout(timeoutId);
+          this.restorePointerEvents(element, token);
+          resolve();
+        };
+        const onFinish = (event) => {
+          if (event.target === element) finish();
+        };
+        const timeoutId = setTimeout(finish, Math.max(0, duration) + 100);
+        requestAnimationFrame(() => {
+          if (settled) return;
+          requestAnimationFrame(() => {
+            if (settled) return;
+            element.addEventListener("transitionend", onFinish);
+            element.addEventListener("transitioncancel", onFinish);
+            element.style.transition = `all ${duration}ms ${easing}`;
+            Object.assign(element.style, styles);
+          });
+        });
+      });
+    }
+    /** Sleep util */
+    static wait(ms) {
+      return new Promise((res) => setTimeout(res, ms));
+    }
+    /** Detiene una transición en curso */
+    static stopTransition(el) {
+      const computed = getComputedStyle(el);
+      el.style.transition = "none";
+      el.style.transform = computed.transform;
+      el.style.opacity = computed.opacity;
+    }
+    // =====================================================================
+    // TRANSICIONES BÁSICAS
+    // =====================================================================
+    static fadeIn(el, duration = 300) {
+      this.setInitial(el, { opacity: "0" });
+      return this.animateTo(el, { opacity: "1" }, duration);
+    }
+    static fadeOut(el, duration = 300) {
+      this.setInitial(el, { opacity: "1" });
+      return this.animateTo(el, { opacity: "0" }, duration);
+    }
+    static slideInX(el, from = "-100%", duration = 300) {
+      this.setInitial(el, { transform: `translateX(${from})` });
+      return this.animateTo(el, { transform: "translateX(0)" }, duration);
+    }
+    static slideOutX(el, to = "-100%", duration = 300) {
+      this.setInitial(el, { transform: "translateX(0)" });
+      return this.animateTo(el, { transform: `translateX(${to})` }, duration);
+    }
+    static slideInY(el, from = "100%", duration = 300) {
+      this.setInitial(el, { transform: `translateY(${from})` });
+      return this.animateTo(el, { transform: "translateY(0)" }, duration);
+    }
+    static slideOutY(el, to = "100%", duration = 300) {
+      this.setInitial(el, { transform: "translateY(0)" });
+      return this.animateTo(el, { transform: `translateY(${to})` }, duration);
+    }
+    static scaleIn(el, from = "0.6", duration = 300) {
+      this.setInitial(el, { transform: `scale(${from})`, opacity: "0" });
+      return this.animateTo(el, { transform: "scale(1)", opacity: "1" }, duration);
+    }
+    static scaleOut(el, to = "0.6", duration = 300) {
+      this.setInitial(el, { transform: "scale(1)", opacity: "1" });
+      return this.animateTo(el, { transform: `scale(${to})`, opacity: "0" }, duration);
+    }
+    static rotateIn(el, from = "-20deg", duration = 300) {
+      this.setInitial(el, { transform: `rotate(${from})`, opacity: "0" });
+      return this.animateTo(el, { transform: "rotate(0)", opacity: "1" }, duration);
+    }
+    static rotateOut(el, to = "20deg", duration = 300) {
+      this.setInitial(el, { transform: "rotate(0)", opacity: "1" });
+      return this.animateTo(el, { transform: `rotate(${to})`, opacity: "0" }, duration);
+    }
+    // =====================================================================
+    // AVANZADAS / COMBINADAS
+    // =====================================================================
+    static slideFadeInY(el, from = "20px", duration = 300) {
+      this.setInitial(el, { transform: `translateY(${from})`, opacity: "0" });
+      return this.animateTo(el, { transform: "translateY(0)", opacity: "1" }, duration);
+    }
+    static slideFadeInX(el, from = "-20px", duration = 300) {
+      this.setInitial(el, { transform: `translateX(${from})`, opacity: "0" });
+      return this.animateTo(el, { transform: "translateX(0)", opacity: "1" }, duration);
+    }
+    static diagonalIn(el, dx = "-50%", dy = "50%", duration = 300) {
+      this.setInitial(el, { transform: `translate(${dx}, ${dy})`, opacity: "0" });
+      return this.animateTo(el, { transform: "translate(0, 0)", opacity: "1" }, duration);
+    }
+    static diagonalOut(el, dx = "50%", dy = "-50%", duration = 300) {
+      this.setInitial(el, { transform: "translate(0, 0)", opacity: "1" });
+      return this.animateTo(el, { transform: `translate(${dx}, ${dy})`, opacity: "0" }, duration);
+    }
+    static zoomIn(el, from = "0.4", duration = 350) {
+      this.setInitial(el, { transform: `scale(${from})`, opacity: "0" });
+      return this.animateTo(el, { transform: "scale(1)", opacity: "1" }, duration);
+    }
+    static zoomOut(el, to = "0.4", duration = 350) {
+      this.setInitial(el, { transform: "scale(1)", opacity: "1" });
+      return this.animateTo(el, { transform: `scale(${to})`, opacity: "0" }, duration);
+    }
+    static flipIn(el, from = "-90deg", duration = 400) {
+      this.setInitial(el, {
+        transform: `rotateY(${from})`,
+        opacity: "0",
+        transformStyle: "preserve-3d"
+      });
+      return this.animateTo(el, {
+        transform: "rotateY(0deg)",
+        opacity: "1"
+      }, duration);
+    }
+    static flipOut(el, to = "90deg", duration = 400) {
+      this.setInitial(el, { transform: "rotateY(0deg)", opacity: "1" });
+      return this.animateTo(el, { transform: `rotateY(${to})`, opacity: "0" }, duration);
+    }
+    // =====================================================================
+    // EFECTOS DINÁMICOS (bounce, elastic)
+    // =====================================================================
+    static async bounceIn(el, duration = 400) {
+      this.setInitial(el, { transform: "scale(0.5)", opacity: "0" });
+      await this.animateTo(el, { transform: "scale(1.1)", opacity: "1" }, duration * 0.5, "ease-out");
+      return this.animateTo(el, { transform: "scale(1)" }, duration * 0.5, "ease-in-out");
+    }
+    static async elasticIn(el, duration = 500) {
+      this.setInitial(el, { transform: "scale(0.3)", opacity: "0" });
+      await this.animateTo(el, { transform: "scale(1.2)", opacity: "1" }, duration * 0.4, "ease-out");
+      return this.animateTo(el, { transform: "scale(1)" }, duration * 0.6, "ease-in-out");
+    }
+    // =====================================================================
+    // SISTEMA PARAMÉTRICO
+    // =====================================================================
+    static slide(el, axis, distance, duration = 300, easing = "ease") {
+      const prop = axis === "x" ? "translateX" : "translateY";
+      this.setInitial(el, { transform: `${prop}(${distance})` });
+      return this.animateTo(el, { transform: `${prop}(0)` }, duration, easing);
+    }
+    static enter(el, opts = {}) {
+      const {
+        opacityFrom = "0",
+        xFrom = "0",
+        yFrom = "20px",
+        scaleFrom = "1",
+        rotateFrom = "0deg",
+        duration = 300,
+        easing = "ease"
+      } = opts;
+      this.setInitial(el, {
+        opacity: opacityFrom,
+        transform: `translate(${xFrom}, ${yFrom}) scale(${scaleFrom}) rotate(${rotateFrom})`
+      });
+      return this.animateTo(el, {
+        opacity: "1",
+        transform: "translate(0,0) scale(1) rotate(0deg)"
+      }, duration, easing);
+    }
+    static leave(el, opts = {}) {
+      const {
+        opacityTo = "0",
+        xTo = "0",
+        yTo = "20px",
+        scaleTo = "1",
+        rotateTo = "0deg",
+        duration = 300,
+        easing = "ease"
+      } = opts;
+      this.setInitial(el, {
+        opacity: "1",
+        transform: "translate(0,0) scale(1) rotate(0deg)"
+      });
+      return this.animateTo(el, {
+        opacity: opacityTo,
+        transform: `translate(${xTo}, ${yTo}) scale(${scaleTo}) rotate(${rotateTo})`
+      }, duration, easing);
+    }
+    // =====================================================================
+    // ANIMATION QUEUE (encadenar animaciones)
+    // =====================================================================
+    static async queue(el, animations) {
+      for (const anim of animations) {
+        await anim();
+      }
+    }
+  };
 
   // src/core/GRouter.ts
   var GRouter = class {
@@ -3205,182 +3424,233 @@
     }
   };
 
-  // src/core/GDirectiveBase.ts
-  var GDirectiveBase = class {
-    constructor(ele, value, root, arg) {
-      this.ele = ele;
-      this.value = value;
-      this.root = root.Root;
-      this.argument = arg;
-      this.onInit?.();
+  // src/core/GEvents.ts
+  var GEvents = class {
+    constructor() {
+      this.namespaces = /* @__PURE__ */ new Map();
+      this.completionListeners = /* @__PURE__ */ new WeakSet();
     }
-  };
-
-  // src/decorators/directive.decorator.ts
-  function isValidAttributeName(name) {
-    return /^[a-zA-Z_][a-zA-Z0-9_\-:.]*$/.test(name);
-  }
-  function Directive(config) {
-    return function(constructor) {
-      const name = config?.name ?? constructor.name.replace(/Directive$/, "").replace(/([A-Z])/g, "-$1").toLowerCase().slice(1);
-      if (!name) {
-        throw new Error("@Directive() requiere un nombre v\xE1lido");
+    getNamespace(ns = "default") {
+      if (!this.namespaces.has(ns)) {
+        this.namespaces.set(ns, /* @__PURE__ */ new Map());
       }
-      if (!isValidAttributeName(name)) {
-        throw new Error(
-          `Nombre de directiva inv\xE1lido: "${name}". Debe ser un nombre de atributo HTML v\xE1lido.`
-        );
-      }
-      const success = C2.GregisterDirective(name, constructor);
-      if (!success) {
-        console.warn(`\u26A0\uFE0F La directiva "${name}" ya est\xE1 registrada.`);
-      }
-      return constructor;
-    };
-  }
-
-  // src/directives/GSet.ts
-  var GSet = class extends GDirectiveBase {
-    onInit() {
-      if (this.argument && this.argument.trim()) {
-        this.path = this.argument.trim().split(".");
-        return;
-      }
-      const legacy = this.ele.getAttribute("g-set-var");
-      if (legacy && legacy.trim()) {
-        this.path = legacy.trim().split(".");
-        this.ele.removeAttribute("g-set-var");
-        return;
-      }
-      console.error(
-        'g-set: falta el nombre de la propiedad. Usa g-set:prop / g-set:obj.prop o g-set-var="prop".'
-      );
+      return this.namespaces.get(ns);
     }
-    applyPathSet(target, value) {
-      if (!target || !this.path || this.path.length === 0) return;
-      const path = this.path;
-      if (path.length > 1) {
-        const reduce = (obj, index, fin) => {
-          if (obj == null) return void 0;
-          if (index === fin) return obj[path[index]];
-          return reduce(obj[path[index]], index + 1, fin);
-        };
-        const parent = reduce(target, 0, path.length - 2);
-        if (!parent) return;
-        const lastKey = path[path.length - 1];
-        parent[lastKey] = value;
+    /**
+     * Registra un listener (interno). Usado por on() y once().
+     */
+    addListener(event, handler, options = {}) {
+      if (event === "*" && !options.namespace) {
+        const global2 = this.getNamespace("__GLOBAL__");
+        const listeners2 = global2.get(event) || [];
+        listeners2.push({ handler, once: options.once, priority: options.priority ?? 0 });
+        listeners2.sort((a3, b3) => (b3.priority ?? 0) - (a3.priority ?? 0));
+        global2.set(event, listeners2);
+        return handler;
+      }
+      const ns = this.getNamespace(options.namespace);
+      const listeners = ns.get(event) || [];
+      listeners.push({ handler, once: options.once, priority: options.priority ?? 0 });
+      listeners.sort((a3, b3) => (b3.priority ?? 0) - (a3.priority ?? 0));
+      ns.set(event, listeners);
+      return handler;
+    }
+    /**
+     * Suscribe un listener a un evento.
+     */
+    on(event, handler, options = {}) {
+      return this.addListener(event, handler, options);
+    }
+    /**
+     * Suscribe un listener que se ejecutará una sola vez.
+     */
+    once(event, handler, options = {}) {
+      return this.addListener(event, handler, { ...options, once: true });
+    }
+    /**
+     * Suscribe un listener y devuelve un objeto con `.off()` para cancelarlo fácilmente.
+     * 
+     * @example
+     * const sub = bus.subscribe("update", data => console.log(data));
+     * sub.off(); // 👈 elimina el listener
+     */
+    subscribe(event, handler, options) {
+      this.on(event, handler, options);
+      return {
+        off: () => this.off(event, handler, options?.namespace)
+      };
+    }
+    off(event, handler, namespace) {
+      const nsName = namespace ?? (event === "*" ? "__GLOBAL__" : "default");
+      const ns = this.namespaces.get(nsName);
+      const handlers = ns?.get(event);
+      if (!handlers) return;
+      const remaining = handlers.filter((l3) => l3.handler !== handler);
+      if (remaining.length) ns.set(event, remaining);
+      else ns.delete(event);
+      if (!ns.size) this.namespaces.delete(nsName);
+    }
+    offAll(event, namespace) {
+      const nsName = namespace ?? (event === "*" ? "__GLOBAL__" : "default");
+      if (event !== void 0) {
+        const ns = this.namespaces.get(nsName);
+        ns?.delete(event);
+        if (ns && !ns.size) this.namespaces.delete(nsName);
       } else {
-        const lastKey = path[0];
-        target[lastKey] = value;
+        this.removeAllListeners(nsName);
       }
     }
-    setAttribute(name, value) {
-      if (!this.path || this.path.length === 0) return;
-      const controller = getControllerFromComponent(this.ele);
-      if (!controller) return;
-      this.applyPathSet(controller, value);
+    removeListener(event, listener, namespace) {
+      const ns = this.namespaces.get(namespace);
+      const listeners = ns?.get(event);
+      if (!listeners) return;
+      const remaining = listeners.filter((candidate) => candidate !== listener);
+      if (remaining.length) ns.set(event, remaining);
+      else ns.delete(event);
+      if (!ns.size) this.namespaces.delete(namespace);
     }
-    getAttribute(name) {
-      return null;
-    }
-    removeAttribute(name) {
-    }
-  };
-  GSet = __decorateClass([
-    Directive({
-      name: "g-set"
-    })
-  ], GSet);
-
-  // src/directives/GClass.ts
-  var GClass = class extends GDirectiveBase {
-    onInit() {
-      const current = this.ele.getAttribute("class");
-      this.cls = current ? current.split(/\s+/).filter(Boolean) : [];
-    }
-    setAttribute(name, value) {
-      const ele = this.ele;
-      this.cls = Array.isArray(value) ? Array.from(value) : String(value || "").split(/\s+/);
-      if (this.cls.length) ele.setAttribute("class", this.cls.join(" "));
-      else ele.removeAttribute("class");
-    }
-    getAttribute(name) {
-      return this.cls?.length ? this.cls.join(" ") : null;
-    }
-    removeAttribute(name) {
-      const ele = this.ele;
-      ele.removeAttribute("class");
-      this.cls = [];
-    }
-  };
-  GClass = __decorateClass([
-    Directive({
-      name: "g-class"
-    })
-  ], GClass);
-
-  // src/directives/GComponent.ts
-  var GComponent = class extends GDirectiveBase {
-    destroyComponent() {
-      if (this.webc) {
-        const prevCtrl = getControllerFromComponent(this.webc);
-        prevCtrl?.destroy();
-        if (!this.regc?.asWebComponent) {
-          if (isHostCreated(this.webc)) this.webc.remove();
-          else this.webc.setAttribute("g-component", "");
+    /**
+     * Emite un evento (ejecuta todos los listeners).
+     * 
+     * @param event Nombre del evento.
+     * @param payload Datos asociados al evento.
+     * @param namespace Namespace opcional (por defecto "default").
+     * @param options 
+     *    - sequential: fuerza la ejecución en orden (por defecto es paralelo).
+     */
+    async emit(event, payload, namespace = "default", options) {
+      const ns = this.namespaces.get(namespace);
+      const handlers = ns?.get(event);
+      const wildcardLocal = ns?.get("*");
+      const globalWildcardListeners = this.namespaces.get("__GLOBAL__")?.get("*") ?? [];
+      const allHandlers = [
+        ...(handlers ?? []).map((listener) => ({ listener, event, namespace, wildcard: event === "*" })),
+        ...(event === "*" ? [] : wildcardLocal ?? []).map((listener) => ({ listener, event: "*", namespace, wildcard: true })),
+        ...(namespace === "__GLOBAL__" ? [] : globalWildcardListeners).map((listener) => ({ listener, event: "*", namespace: "__GLOBAL__", wildcard: true }))
+      ];
+      if (allHandlers.length === 0) return;
+      for (const entry of allHandlers) {
+        if (entry.listener.once) this.removeListener(entry.event, entry.listener, entry.namespace);
+      }
+      const runHandler = async (listener, isWildcard = false) => {
+        try {
+          if (isWildcard) {
+            const handler = listener.handler;
+            await handler({ event, payload, namespace });
+          } else {
+            const handler = listener.handler;
+            await handler(payload);
+          }
+        } catch (err) {
+          console.error(`[GEvents] Error en handler "${String(event)}" (${namespace}):`, err);
         }
-        this.webc = void 0;
-        this.regc = void 0;
-      }
-    }
-    createComponent(tagName) {
-      const nextTag = String(tagName ?? "").trim();
-      if (!nextTag) {
-        this.destroyComponent();
-        this.value = "";
-        this.ele.removeAttribute("g-component");
-        return;
-      }
-      if (this.value === nextTag && this.webc)
-        return;
-      this.destroyComponent();
-      const regc = getRegisteredComponent(nextTag);
-      if (!regc) {
-        console.warn(`[g-component] componente "${nextTag}" no registrado`);
-        return;
-      }
-      this.value = nextTag;
-      this.ele.setAttribute("g-component", this.value);
-      this.ele.innerHTML = "";
-      if (regc.asWebComponent) {
-        const webc = new regc.ComponentClass();
-        this.ele.appendChild(webc);
-        this.webc = webc;
+      };
+      const ordinary = allHandlers.filter((entry) => !this.completionListeners.has(entry.listener));
+      const completion = allHandlers.filter((entry) => this.completionListeners.has(entry.listener));
+      const execute = (entry) => runHandler(entry.listener, entry.wildcard);
+      if (!options?.sequential) {
+        await Promise.all(ordinary.map(execute));
       } else {
-        this.webc = new regc.ComponentClass(this.ele);
+        for (const entry of ordinary) await execute(entry);
       }
-      this.regc = regc;
+      await Promise.all(completion.map(execute));
     }
-    onInit() {
-      this.createComponent(this.value);
+    waitFor(event, timeoutMs, namespace = "default") {
+      return new Promise((resolve, reject) => {
+        const handler = (payload) => {
+          clearTimeout(timer);
+          this.off(event, handler, namespace);
+          resolve(payload);
+        };
+        let timer;
+        if (timeoutMs) {
+          timer = setTimeout(() => {
+            this.off(event, handler, namespace);
+            reject(new Error(`Timeout esperando evento "${String(event)}" (${namespace})`));
+          }, timeoutMs);
+        }
+        this.on(event, handler, { namespace });
+      });
     }
-    setAttribute(name, value) {
-      this.createComponent(String(value ?? ""));
+    /**
+    * Espera a que un evento se emita y **todos los listeners terminen** (incluidos los async).
+    * 
+    * @param event Nombre del evento a esperar.
+    * @param timeoutMs Tiempo máximo de espera (opcional).
+    * @param namespace Namespace opcional (por defecto "default").
+    * 
+    * @returns Una promesa que se resuelve con el payload cuando todos los handlers hayan terminado.
+    */
+    waitForComplete(event, timeoutMs, namespace = "default") {
+      return new Promise((resolve, reject) => {
+        let timer;
+        const handler = (payload) => {
+          clearTimeout(timer);
+          resolve(payload);
+        };
+        if (timeoutMs) {
+          timer = setTimeout(() => {
+            this.off(event, handler, namespace);
+            reject(new Error(`Timeout esperando evento completo "${String(event)}" (${namespace})`));
+          }, timeoutMs);
+        }
+        const listener = { handler, once: true };
+        this.completionListeners.add(listener);
+        const ns = this.getNamespace(namespace);
+        const listeners = ns.get(event) ?? [];
+        listeners.push(listener);
+        ns.set(event, listeners);
+      });
     }
-    getAttribute(name) {
-      return this.value ?? "";
+    removeAllListeners(namespace) {
+      if (namespace) {
+        this.namespaces.delete(namespace);
+      } else {
+        this.namespaces.clear();
+      }
     }
-    removeAttribute(name) {
-      this.destroyComponent();
-      this.value = "";
-      this.ele.removeAttribute("g-component");
+    count(ns) {
+      return [...ns.values()].reduce((acc, arr) => acc + (arr?.length ?? 0), 0);
+    }
+    listenerCount(namespace) {
+      if (namespace) return this.count(this.namespaces.get(namespace) ?? /* @__PURE__ */ new Map());
+      let total = 0;
+      for (const ns of this.namespaces.values()) total += this.count(ns);
+      return total;
+    }
+    listNamespaces() {
+      return [...this.namespaces.keys()];
+    }
+    hasListeners(event, namespace = "default") {
+      const ns = this.namespaces.get(namespace);
+      return !!ns?.get(event)?.length;
+    }
+    getListeners(event, namespace = "default") {
+      return [...this.namespaces.get(namespace)?.get(event) ?? []];
     }
   };
-  GComponent = __decorateClass([
-    Directive({
-      name: "g-component"
-    })
-  ], GComponent);
+
+  // src/core/GTplComponentBase.ts
+  var GTplComponentBase = class {
+    onConstruct() {
+    }
+    onInit() {
+    }
+    onTemplateReady() {
+    }
+    onConnect() {
+    }
+    onDisconnect() {
+    }
+    onDestroy() {
+    }
+  };
+
+  // src/services/GBus.ts
+  var GBus = new GEvents();
+
+  // src/index.ts
+  setTemplateCompiler((html) => C2.jit.GCompile(C2.jit.GCode(html)));
 
   // docs/playground.js
   var definitions = [];
@@ -3679,6 +3949,7 @@
 
 @mpeliz/gtpl/dist/shared/runtime.esm.js:
 @mpeliz/gtpl/dist/gtpl.esm.js:
+@mpeliz/gtpl/dist/runtime.esm.js:
   (*!
   * @mpeliz/gtpl v3.1.0
   * (c) 2024 Manuel Peliz

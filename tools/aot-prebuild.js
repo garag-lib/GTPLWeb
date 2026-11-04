@@ -280,7 +280,7 @@ function injectCompiledAssets(code, className, compiledTemplate, compiledStyles,
     let output = code;
     const source = ts.createSourceFile('component.ts', code, ts.ScriptTarget.Latest, true, ts.ScriptKind.TS);
     const runtimeImport = source.statements.find(node => ts.isImportDeclaration(node)
-        && ts.isStringLiteral(node.moduleSpecifier) && node.moduleSpecifier.text === '@mpeliz/gtpl'
+        && ts.isStringLiteral(node.moduleSpecifier) && ['@mpeliz/gtpl', '@mpeliz/gtpl/runtime'].includes(node.moduleSpecifier.text)
         && !node.importClause?.isTypeOnly && node.importClause?.name);
     let runtimeName = runtimeImport?.importClause.name.text;
     if (!runtimeName) {
@@ -293,7 +293,7 @@ function injectCompiledAssets(code, className, compiledTemplate, compiledStyles,
         runtimeName = '__GTPL_AOT';
         while (identifiers.has(runtimeName)) runtimeName += '_';
         const insertion = source.statements[0]?.getStart(source) ?? code.length;
-        output = code.slice(0, insertion) + `import ${runtimeName} from '@mpeliz/gtpl';\n` + code.slice(insertion);
+        output = code.slice(0, insertion) + `import ${runtimeName} from '@mpeliz/gtpl/runtime';\n` + code.slice(insertion);
     }
 
     // La expr del template compilado (igual que antes)

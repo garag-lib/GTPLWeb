@@ -6,10 +6,10 @@ import copy from 'rollup-plugin-copy';
 
 export default [
   {
-    input: 'src-aot/index.ts',
+    input: { gtplweb: 'src-aot/index.ts', runtime: 'src-aot/runtime.ts' },
     output: [
-      { file: 'dist/gtplweb.esm.js', format: 'es', sourcemap: true },
-      { file: 'dist/gtplweb.cjs', format: 'cjs', sourcemap: true, exports: 'named' }
+      { dir: 'dist', entryFileNames: '[name].esm.js', chunkFileNames: 'shared/[name].esm.js', format: 'es', sourcemap: true },
+      { dir: 'dist', entryFileNames: '[name].cjs', chunkFileNames: 'shared/[name].cjs', format: 'cjs', sourcemap: true, exports: 'named' }
     ],
     plugins: [
       nodeResolve(),
@@ -28,11 +28,11 @@ export default [
         hook: 'writeBundle'
       })
     ],
-    external: ['@mpeliz/gtpl', 'tslib']
+    external: ['@mpeliz/gtpl', '@mpeliz/gtpl/runtime', 'tslib']
   },
   {
-    input: 'src-aot/index.ts',
-    output: { file: 'dist/index.d.ts', format: 'es' },
+    input: { index: 'src-aot/index.ts', runtime: 'src-aot/runtime.ts' },
+    output: { dir: 'dist', entryFileNames: '[name].d.ts', chunkFileNames: 'shared/[name].d.ts', format: 'es' },
     plugins: [dts()]
   }
 ];

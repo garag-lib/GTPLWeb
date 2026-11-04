@@ -1,10 +1,4 @@
-import { Component } from '../src/decorators/component.decorator.ts';
-import { GTplComponentBase } from '../src/core/GTplComponentBase.ts';
-import { GBus } from '../src/services/GBus.ts';
-import { GRouter } from '../src/core/GRouter.ts';
-import '../src/directives/GSet.ts';
-import '../src/directives/GClass.ts';
-import '../src/directives/GComponent.ts';
+import { Component, GTplComponentBase, GBus, GRouter } from '../src/index.ts';
 
 // Each displayed controller and template below powers its corresponding live demo.
 // Function-call decorators keep these examples directly usable in JavaScript.

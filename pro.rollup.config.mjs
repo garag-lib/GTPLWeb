@@ -30,10 +30,10 @@ function minifyWithEsbuild() {
 
 export default [
   {
-    input: `${inputDir}/index.ts`,
+    input: { gtplweb: `${inputDir}/index.ts`, runtime: `${inputDir}/runtime.ts` },
     output: [
-      { file: 'dist/gtplweb.esm.js', format: 'es', sourcemap: !isProd },
-      { file: 'dist/gtplweb.cjs', format: 'cjs', sourcemap: !isProd, exports: 'named' }
+      { dir: 'dist', entryFileNames: '[name].esm.js', chunkFileNames: 'shared/[name].esm.js', format: 'es', sourcemap: !isProd },
+      { dir: 'dist', entryFileNames: '[name].cjs', chunkFileNames: 'shared/[name].cjs', format: 'cjs', sourcemap: !isProd, exports: 'named' }
     ],
     plugins: [
       nodeResolve(),
@@ -52,11 +52,11 @@ export default [
         hook: 'writeBundle'
       })
     ],
-    external: ['@mpeliz/gtpl', 'tslib']
+    external: ['@mpeliz/gtpl', '@mpeliz/gtpl/runtime', 'tslib']
   },
   {
-    input: `${inputDir}/index.ts`,
-    output: { file: 'dist/index.d.ts', format: 'es' },
+    input: { index: `${inputDir}/index.ts`, runtime: `${inputDir}/runtime.ts` },
+    output: { dir: 'dist', entryFileNames: '[name].d.ts', chunkFileNames: 'shared/[name].d.ts', format: 'es' },
     plugins: [dts()]
   }
 ];

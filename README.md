@@ -113,6 +113,28 @@ Modes:
 - `bundle`: bundled + minified
 - `bundle-split`: minified + chunk splitting for lazy `import()`
 
+### AOT runtime entry
+
+`@mpeliz/gtplweb` keeps support for AOT and JIT templates. For applications with
+only precompiled templates, `@mpeliz/gtplweb/runtime` exposes the same API without
+loading GTPL's parser or dynamic compiler. Both entries share component classes,
+registries, router and services within each module format (ESM or CommonJS).
+Loading the full entry enables JIT compilation in that shared framework instance.
+
+```ts
+import { Component, getGTPL } from '@mpeliz/gtplweb/runtime';
+```
+
+Run `gtpl-aot` first. Its generated templates import `@mpeliz/gtpl/runtime`.
+`gtpl-app-build --runtime-only` redirects both GTPL and GTPLWeb imports to their
+runtime entries, including existing imports without `/runtime`. It works in all
+three build modes. Set `gtplweb.runtimeOnly: true` in the application's
+`package.json` to enable it by default; `--no-runtime-only` overrides that setting.
+The compiler remains a build dependency. Components without an AOT generator
+(including `aot: false`) require the full entry and fail explicitly with runtime only.
+For custom bundlers, resolve both libraries to their `/runtime` entries.
+When copying distribution files manually, include `dist/shared/`.
+
 ## Recommended App Scripts
 
 ```json
@@ -273,6 +295,7 @@ Main options:
 - `--no-i18n`
 - `--no-clean`
 - `--verify-dedupe`
+- `--runtime-only` / `--no-runtime-only`
 
 ## Package Config (`package.json`)
 
@@ -287,7 +310,8 @@ Optional:
     "entry": "src-aot/main.ts",
     "i18nDir": "src/i18n",
     "compiler": "optimized",
-    "methodAliases": true
+    "methodAliases": true,
+    "runtimeOnly": false
   }
 }
 ```
