@@ -2,7 +2,7 @@
   "author": "Manuel Peliz",
   "license": "Apache-2.0",
   "name": "@mpeliz/gtplweb",
-  "version": "2.0.1",
+  "version": "2.0.2",
   "description": "Web component framework built on top of GTPL with AOT compilation.",
   "keywords": [
     "gtpl",
@@ -68,7 +68,7 @@
     "gtpl-init": "tools/init-app.js"
   },
   "dependencies": {
-    "@mpeliz/gtpl": "github:garag-lib/GTPL#v3.0.0",
+    "@mpeliz/gtpl": "github:garag-lib/GTPL#v3.1.0",
     "esbuild": "^0.28.1",
     "glob": "^13.0.6",
     "jsdom": "^27.0.1",
